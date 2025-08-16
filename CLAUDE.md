@@ -26,7 +26,7 @@ python main.py
 python main.py --model yolo11m.pt --confidence 0.7
 
 # Test without camera (system verification)
-python test_detector.py
+python debug/test_detector.py
 
 # Debug mode with detailed logging
 python main.py --debug
@@ -102,6 +102,7 @@ tracked = tracker.update_with_detections(detections)
 - `src/core/camera.py`: Camera management with fallback logic
 - `src/ui/visualizer.py`: All visualization and overlay functions
 - `src/utils/performance.py`: FPS and timing metrics
+- `debug/test_detector.py`: Component verification script
 - `docs/model_evaluation.md`: YOLOv11 performance analysis
 - `docs/optimization_guide.md`: Enhancement recommendations
 
@@ -110,7 +111,7 @@ tracked = tracker.update_with_detections(detections)
 - Ultralytics config at `~/.config/Ultralytics/settings.json`
 
 ## Testing Approach
-- Unit test substitute: `test_detector.py` verifies component initialization
+- Unit test substitute: `debug/test_detector.py` verifies component initialization
 - Integration testing: Run `python main.py` with camera connected
 - Performance validation: Monitor FPS display during runtime
 

@@ -73,6 +73,11 @@ person-face-age-gender-detector/
 │   │   └── visualizer.py  # 検出結果の可視化
 │   └── utils/             # ユーティリティ
 │       └── performance.py # パフォーマンス監視
+├── debug/                 # デバッグ・テスト用
+│   └── test_detector.py   # システムテストスクリプト
+├── docs/                  # ドキュメント
+│   ├── model_evaluation.md # モデル評価レポート
+│   └── optimization_guide.md # 最適化ガイド
 └── .venv/                 # Python仮想環境
 ```
 
