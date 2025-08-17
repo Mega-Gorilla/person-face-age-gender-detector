@@ -86,7 +86,9 @@ class PersonDetector:
                         'center': ((x1 + x2) // 2, (y1 + y2) // 2),
                         'area': (x2 - x1) * (y2 - y1),
                         'width': x2 - x1,
-                        'height': y2 - y1
+                        'height': y2 - y1,
+                        'class_name': 'person',  # Add class name for consistency
+                        'class_id': class_id
                     }
                     person_detections.append(detection)
         

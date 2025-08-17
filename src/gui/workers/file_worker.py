@@ -190,10 +190,17 @@ class FileProcessingWorker(QThread):
                 }
                 
                 for detection in detections:
+                    # Convert bbox tuple to list
+                    bbox = detection['bbox']
+                    if isinstance(bbox, tuple):
+                        bbox = list(bbox)
+                    elif hasattr(bbox, 'tolist'):
+                        bbox = bbox.tolist()
+                    
                     det_data = {
-                        'bbox': detection['bbox'].tolist(),
+                        'bbox': bbox,
                         'confidence': float(detection['confidence']),
-                        'class': detection['class_name']
+                        'class': detection.get('class_name', 'person')  # Default to 'person' if not specified
                     }
                     frame_data['detections'].append(det_data)
                     
