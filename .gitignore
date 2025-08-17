@@ -53,6 +53,10 @@ screenshot_*.jpg
 *.mp4
 *.avi
 
+# Debug directory (test files and outputs)
+debug/
+/debug/
+
 # Logs
 *.log
 logs/
