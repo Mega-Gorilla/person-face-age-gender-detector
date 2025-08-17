@@ -15,6 +15,8 @@ from PySide6.QtGui import QIcon
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.gui.windows.main_window import MainWindow
+from src.gui.dialogs.model_download_dialog import check_and_download_models
+from src.core.age_gender_caffe import check_gdown_installed
 
 # ロギングの設定
 logging.basicConfig(
@@ -41,6 +43,21 @@ def main():
     
     # メインウィンドウの作成と表示
     try:
+        # Caffeモデルのチェックとダウンロード
+        logger.info("Checking for age/gender models...")
+        
+        # gdownがインストールされているかチェック
+        if not check_gdown_installed():
+            logger.warning("gdown is not installed. Age/gender estimation will be limited.")
+            logger.warning("Install with: pip install gdown")
+        else:
+            # モデルのチェックとダウンロード（必要に応じてダイアログ表示）
+            models_ready = check_and_download_models()
+            if models_ready:
+                logger.info("Age/gender models are ready")
+            else:
+                logger.warning("Age/gender models not available - feature will be disabled")
+        
         window = MainWindow()
         window.show()
         

@@ -10,7 +10,6 @@ import logging
 import os
 from pathlib import Path
 import urllib.request
-import gdown
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +68,16 @@ class CaffeAgeGenderEstimator:
     def _download_caffemodel_from_drive(self, file_id: str, path: Path) -> bool:
         """Download caffemodel from Google Drive"""
         try:
+            import gdown
+        except ImportError:
+            logger.error("gdown is not installed. Please install it with: pip install gdown")
+            logger.error("Or manually download the model files from:")
+            logger.error(f"  Age model: https://drive.google.com/uc?id={self.MODEL_URLS['age_caffemodel']}")
+            logger.error(f"  Gender model: https://drive.google.com/uc?id={self.MODEL_URLS['gender_caffemodel']}")
+            logger.error(f"  And place them in: {self.MODEL_DIR}")
+            return False
+        
+        try:
             logger.info(f"Downloading caffemodel from Google Drive (ID: {file_id})...")
             url = f"https://drive.google.com/uc?id={file_id}"
             gdown.download(url, str(path), quiet=False)
@@ -76,6 +85,8 @@ class CaffeAgeGenderEstimator:
             return True
         except Exception as e:
             logger.error(f"Failed to download caffemodel: {e}")
+            logger.error(f"Please manually download from: {url}")
+            logger.error(f"And save to: {path}")
             return False
     
     def _ensure_models_exist(self) -> bool:
@@ -95,16 +106,32 @@ class CaffeAgeGenderEstimator:
         
         # Check and download age caffemodel
         if not self.AGE_CAFFEMODEL.exists():
+            logger.warning(f"Age model not found at {self.AGE_CAFFEMODEL}")
             if not self._download_caffemodel_from_drive(self.MODEL_URLS['age_caffemodel'], self.AGE_CAFFEMODEL):
-                # Try alternative download method
-                logger.warning("Trying alternative download for age model...")
+                logger.error("\n" + "="*60)
+                logger.error("MODEL DOWNLOAD REQUIRED")
+                logger.error("="*60)
+                logger.error("The age estimation model is not available.")
+                logger.error("Please either:")
+                logger.error("1. Install gdown: pip install gdown")
+                logger.error("2. Or manually download the models and place them in:")
+                logger.error(f"   {self.MODEL_DIR}/")
+                logger.error("="*60 + "\n")
                 return False
         
         # Check and download gender caffemodel
         if not self.GENDER_CAFFEMODEL.exists():
+            logger.warning(f"Gender model not found at {self.GENDER_CAFFEMODEL}")
             if not self._download_caffemodel_from_drive(self.MODEL_URLS['gender_caffemodel'], self.GENDER_CAFFEMODEL):
-                # Try alternative download method
-                logger.warning("Trying alternative download for gender model...")
+                logger.error("\n" + "="*60)
+                logger.error("MODEL DOWNLOAD REQUIRED")
+                logger.error("="*60)
+                logger.error("The gender estimation model is not available.")
+                logger.error("Please either:")
+                logger.error("1. Install gdown: pip install gdown")
+                logger.error("2. Or manually download the models and place them in:")
+                logger.error(f"   {self.MODEL_DIR}/")
+                logger.error("="*60 + "\n")
                 return False
         
         return True
@@ -149,8 +176,16 @@ class CaffeAgeGenderEstimator:
     
     def _initialize_fallback(self):
         """Initialize fallback method"""
-        self.method = "fallback"
-        logger.warning("Using fallback heuristic method for age/gender estimation")
+        self.method = "caffe_unavailable"
+        logger.error("\n" + "="*60)
+        logger.error("CAFFE MODELS NOT AVAILABLE")
+        logger.error("="*60)
+        logger.error("Age/Gender estimation requires Caffe models.")
+        logger.error("To enable age/gender estimation:")
+        logger.error("1. Install gdown: pip install gdown")
+        logger.error("2. Restart the application")
+        logger.error("3. Models will download automatically")
+        logger.error("="*60 + "\n")
     
     def estimate(
         self,
@@ -232,15 +267,14 @@ class CaffeAgeGenderEstimator:
             return self._estimate_fallback(face_image)
     
     def _estimate_fallback(self, face_image: np.ndarray) -> Dict:
-        """Simple fallback estimation"""
-        # For fallback, return reasonable defaults
+        """Return unavailable status when models not loaded"""
         return {
-            'age': 30,
-            'age_range': '(25-32)',
-            'age_confidence': 0.3,
-            'gender': 'Male' if np.random.random() > 0.5 else 'Female',
-            'gender_confidence': 0.5,
-            'method': 'fallback'
+            'age': None,
+            'age_range': 'Model Not Available',
+            'age_confidence': 0.0,
+            'gender': 'Model Not Available',
+            'gender_confidence': 0.0,
+            'method': 'caffe_unavailable'
         }
     
     def batch_estimate(self, face_images: List[np.ndarray]) -> List[Dict]:
@@ -251,86 +285,49 @@ class CaffeAgeGenderEstimator:
         return results
 
 
-# Create a function to check if gdown is installed
 def check_gdown_installed():
     """Check if gdown is installed for Google Drive downloads"""
     try:
         import gdown
         return True
     except ImportError:
-        logger.warning("gdown not installed. Install with: pip install gdown")
         return False
 
 
-# Alternative implementation without gdown
-class SimpleCaffeAgeGenderEstimator:
-    """Simplified version that works without gdown"""
+def get_model_download_instructions() -> str:
+    """Get instructions for downloading models"""
+    return """
+    ============================================================
+    AGE/GENDER MODEL SETUP REQUIRED
+    ============================================================
     
-    MODEL_MEAN_VALUES = (78.4263377603, 87.7689143744, 114.895847746)
-    AGE_LIST = ['(0-2)', '(4-6)', '(8-12)', '(15-20)', '(25-32)', '(38-43)', '(48-53)', '(60-100)']
-    GENDER_LIST = ['Male', 'Female']
+    The Caffe models for age and gender estimation are not installed.
     
-    def __init__(self):
-        self.method = "simple_fallback"
-        logger.info("Using simplified age/gender estimator")
+    OPTION 1: Automatic Download (Recommended)
+    ------------------------------------------
+    1. Install gdown package:
+       pip install gdown
+       
+    2. Restart the application
     
-    def estimate(self, face_image: np.ndarray, **kwargs) -> Dict:
-        """Simple estimation based on image analysis"""
-        try:
-            # Convert to grayscale
-            gray = cv2.cvtColor(face_image, cv2.COLOR_BGR2GRAY)
-            
-            # Simple heuristics based on image properties
-            h, w = gray.shape
-            mean_intensity = np.mean(gray)
-            std_intensity = np.std(gray)
-            
-            # Estimate age based on texture complexity
-            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-            
-            if laplacian_var < 100:
-                age_idx = 0  # Very smooth - baby
-            elif laplacian_var < 300:
-                age_idx = 2  # Smooth - child
-            elif laplacian_var < 600:
-                age_idx = 3  # Young adult
-            elif laplacian_var < 1000:
-                age_idx = 4  # Adult
-            else:
-                age_idx = 5  # Older adult
-            
-            age_range = self.AGE_LIST[min(age_idx, len(self.AGE_LIST)-1)]
-            
-            # Simple gender estimation (placeholder)
-            gender = 'Male' if mean_intensity > 127 else 'Female'
-            
-            # Map to specific age
-            age_mapping = {
-                '(0-2)': 1, '(4-6)': 5, '(8-12)': 10,
-                '(15-20)': 18, '(25-32)': 28, '(38-43)': 40,
-                '(48-53)': 50, '(60-100)': 70
-            }
-            
-            return {
-                'age': age_mapping.get(age_range, 30),
-                'age_range': age_range,
-                'age_confidence': 0.4,
-                'gender': gender,
-                'gender_confidence': 0.4,
-                'method': 'simple_heuristic'
-            }
-            
-        except Exception as e:
-            logger.error(f"Simple estimation failed: {e}")
-            return {
-                'age': 30,
-                'age_range': '(25-32)',
-                'age_confidence': 0.2,
-                'gender': 'Unknown',
-                'gender_confidence': 0.0,
-                'method': 'error'
-            }
+    3. Models will download automatically (~90MB total)
     
-    def batch_estimate(self, face_images: List[np.ndarray]) -> List[Dict]:
-        """Batch process multiple faces"""
-        return [self.estimate(img) for img in face_images]
+    OPTION 2: Manual Download
+    -------------------------
+    1. Download the following files:
+    
+       Age model (45.7MB):
+       https://drive.google.com/uc?id=1kiusFljZc9QfcIYdU2s7xrtWHTraHwmW
+       Save as: models/age_gender_caffe/age_net.caffemodel
+       
+       Gender model (44.9MB):
+       https://drive.google.com/uc?id=1W_moLzMlGiELyPxWiYQJ9KFaXroQ_NFQ
+       Save as: models/age_gender_caffe/gender_net.caffemodel
+    
+    2. Create the directory if it doesn't exist:
+       mkdir -p models/age_gender_caffe
+    
+    3. Place the downloaded files in the directory
+    
+    ============================================================
+    """

@@ -32,6 +32,12 @@ env/
 *.engine
 *.mlmodel
 
+# Caffe Models and downloaded models
+models/
+*.caffemodel
+*.prototxt
+*.part
+
 # IDE
 .vscode/
 .idea/

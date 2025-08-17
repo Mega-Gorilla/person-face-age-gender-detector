@@ -1,17 +1,20 @@
-# YOLOv11 Person Detection System v2.1.0
+# YOLOv11 Person Detection System v2.2.0
 
-Real-time person detection system with both webcam streaming and video file processing capabilities. Powered by the latest YOLOv11 (2025) models.
+Real-time person detection system with face detection and age/gender estimation capabilities. Powered by the latest YOLOv11 (2025) models and Caffe deep learning models.
 
 ## 🌟 Key Features
 
 - **Dual Mode Operation**: Stream mode (webcam) and File mode (video processing)
 - **Tab Interface**: Easy switching between Stream and File modes
 - **Latest Technology**: YOLOv11 (2025's newest model) with up to 54.7% mAP
+- **Face Detection**: Advanced face detection with YuNet model
+- **Age/Gender Estimation**: Deep learning-based age and gender prediction using Caffe models
 - **GUI & CUI Support**: PySide6 GUI with tab interface or command-line interface
 - **High Performance**: Real-time detection at 30+ FPS
 - **Export Formats**: JSON, CSV, XML for detection data
 - **Drag & Drop**: Support for video file drag and drop
 - **Resource Management**: Automatic pause/resume when switching tabs
+- **Auto Model Download**: Automatic download of required models on first run
 
 ## 📋 Requirements
 
@@ -33,11 +36,24 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Install gdown for automatic model downloads (optional but recommended)
+pip install gdown
+
+# Download age/gender models (automatic on first run, or manual)
+python download_models.py
 ```
+
+## 🤖 Age/Gender Models
+
+The system uses Caffe models for age and gender estimation:
+- Models will be automatically downloaded on first GUI launch (~90MB)
+- Or manually download using: `python download_models.py`
+- Models are saved to `models/age_gender_caffe/`
 
 ## 📖 Usage
 
-### GUI Mode (Recommended) - v2.1.0
+### GUI Mode (Recommended) - v2.2.0
 
 ```bash
 python gui_main.py
@@ -45,6 +61,8 @@ python gui_main.py
 
 #### 🎥 Stream Tab (Webcam)
 - Real-time person detection from webcam
+- Face detection with tracking
+- Age and gender estimation
 - Live statistics display
 - Adjustable confidence threshold
 - Screenshot capture
@@ -52,13 +70,20 @@ python gui_main.py
 
 #### 📁 File Tab (Video Processing)
 - Process video files (MP4, AVI, MOV, etc.)
+- Face detection and age/gender analysis
 - Batch processing support
 - Progress bar with ETA
 - Export options:
   - Annotated video with bounding boxes
-  - JSON detection data
+  - JSON detection data (including face/age/gender)
   - CSV detection data
   - Individual frames (optional)
+
+#### 🎛️ Features Available in Both Tabs
+- **Face Detection**: Toggle on/off
+- **Age/Gender Estimation**: Deep learning-based prediction
+- **Performance Monitoring**: FPS and processing time
+- **Export Results**: Save detection data in multiple formats
 
 ### CUI Mode (Legacy)
 

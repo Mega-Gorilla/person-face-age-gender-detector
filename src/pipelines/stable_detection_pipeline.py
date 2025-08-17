@@ -18,8 +18,8 @@ ADVANCED_MODELS_AVAILABLE = False
 try:
     from src.core.face_detector_advanced import AdvancedFaceDetector
     from src.core.age_gender_advanced import AdvancedAgeGenderEstimator
-    # Also try to import Caffe models
-    from src.core.age_gender_caffe import CaffeAgeGenderEstimator, SimpleCaffeAgeGenderEstimator, check_gdown_installed
+    # Import Caffe models
+    from src.core.age_gender_caffe import CaffeAgeGenderEstimator, check_gdown_installed, get_model_download_instructions
     ADVANCED_MODELS_AVAILABLE = True
     logger.info("Advanced models available, using optimized implementations")
 except ImportError as e:
@@ -96,26 +96,34 @@ class StableDetectionPipeline:
                         temporal_window=self.temporal_window
                     )
             
-            # Age/Gender estimator - use best available model
+            # Age/Gender estimator - use Caffe models
             if self.enable_age_gender:
                 if self.use_advanced_models:
-                    # Try Caffe models first (most reliable)
+                    # Use Caffe models (most reliable)
                     try:
-                        if check_gdown_installed():
-                            logger.info("Initializing Caffe age/gender estimator...")
-                            self.age_gender_estimator = CaffeAgeGenderEstimator(
-                                use_gpu=self.config.get('use_gpu', False)
-                            )
-                        else:
-                            logger.info("Using simplified age/gender estimator (install gdown for better models)")
-                            self.age_gender_estimator = SimpleCaffeAgeGenderEstimator()
-                    except Exception as e:
-                        logger.warning(f"Failed to initialize Caffe models: {e}")
-                        # Fallback to ONNX models
-                        logger.info("Falling back to ONNX age/gender estimator...")
-                        self.age_gender_estimator = AdvancedAgeGenderEstimator(
+                        logger.info("Initializing Caffe age/gender estimator...")
+                        self.age_gender_estimator = CaffeAgeGenderEstimator(
                             use_gpu=self.config.get('use_gpu', False)
                         )
+                        
+                        # Check if initialization was successful
+                        if hasattr(self.age_gender_estimator, 'method') and self.age_gender_estimator.method == 'caffe_unavailable':
+                            logger.warning("\n" + get_model_download_instructions())
+                            # Still use the estimator but it will return "Model Not Available"
+                            
+                    except Exception as e:
+                        logger.error(f"Failed to initialize Caffe models: {e}")
+                        logger.error("\n" + get_model_download_instructions())
+                        # Fallback to ONNX models as last resort
+                        logger.info("Attempting fallback to ONNX age/gender estimator...")
+                        try:
+                            self.age_gender_estimator = AdvancedAgeGenderEstimator(
+                                use_gpu=self.config.get('use_gpu', False)
+                            )
+                        except:
+                            # Create a dummy estimator that returns unavailable
+                            self.age_gender_estimator = None
+                            logger.error("No age/gender estimation models available")
                 else:
                     logger.info("Initializing standard age/gender estimator...")
                     try:
@@ -203,22 +211,48 @@ class StableDetectionPipeline:
                     track_id = face.get('track_id')
                     
                     # Step 3: Age/Gender estimation with smoothing
-                    if do_age and self.age_gender_estimator and track_id is not None:
-                        age_start = time.time()
-                        
-                        # Estimate age/gender
-                        age_gender = self.age_gender_estimator.estimate(
-                            frame,
-                            face['bbox'],
-                            person['bbox']
-                        )
-                        
-                        # Apply temporal smoothing for age/gender
-                        smoothed_age_gender = self._smooth_age_gender(track_id, age_gender)
-                        face.update(smoothed_age_gender)
-                        
-                        if person_idx == 0 and face_idx == 0:
-                            results['processing_time']['age_gender'] = time.time() - age_start
+                    if do_age and track_id is not None:
+                        if self.age_gender_estimator:
+                            age_start = time.time()
+                            
+                            # Extract face ROI for age/gender estimation
+                            x1, y1, x2, y2 = face['bbox']
+                            face_roi = frame[y1:y2, x1:x2]
+                            
+                            if face_roi.size > 0:
+                                # Estimate age/gender
+                                age_gender = self.age_gender_estimator.estimate(
+                                    face_roi,
+                                    face['bbox'],
+                                    frame  # Pass full frame as person image
+                                )
+                                
+                                # Apply temporal smoothing for age/gender
+                                smoothed_age_gender = self._smooth_age_gender(track_id, age_gender)
+                                face.update(smoothed_age_gender)
+                            else:
+                                # Empty ROI
+                                face.update({
+                                    'age': None,
+                                    'age_range': 'ROI Error',
+                                    'gender': 'ROI Error',
+                                    'age_confidence': 0.0,
+                                    'gender_confidence': 0.0,
+                                    'method': 'error'
+                                })
+                            
+                            if person_idx == 0 and face_idx == 0:
+                                results['processing_time']['age_gender'] = time.time() - age_start
+                        else:
+                            # No estimator available
+                            face.update({
+                                'age': None,
+                                'age_range': 'Model Not Available',
+                                'gender': 'Model Not Available',
+                                'age_confidence': 0.0,
+                                'gender_confidence': 0.0,
+                                'method': 'none'
+                            })
                     
                     person['faces'].append(face)
                     results['faces'].append(face)
