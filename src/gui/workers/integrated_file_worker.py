@@ -434,8 +434,9 @@ class IntegratedFileWorker(QThread):
             data_format = self.params['data_format']
             
             if data_format == '.json':
-                with open(data_path, 'w') as f:
-                    json.dump(output_files['detections_data'], f, indent=2)
+                # Use CoordinateExporter for proper serialization
+                exporter = CoordinateExporter()
+                exporter.export_json(output_files['detections_data'], Path(data_path))
             elif data_format == '.csv':
                 self._save_csv(data_path, output_files['detections_data'])
             elif data_format == '.xml':

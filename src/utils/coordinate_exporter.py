@@ -265,11 +265,20 @@ class CoordinateExporter:
             return data.tolist()
         elif isinstance(data, (np.integer, np.floating)):
             return data.item()
+        elif isinstance(data, (np.int64, np.int32, np.int16, np.int8)):
+            return int(data)
+        elif isinstance(data, (np.float64, np.float32, np.float16)):
+            return float(data)
+        elif isinstance(data, np.bool_):
+            return bool(data)
         elif isinstance(data, dict):
             return {k: self._make_serializable(v) for k, v in data.items()}
-        elif isinstance(data, list):
+        elif isinstance(data, (list, tuple)):
             return [self._make_serializable(item) for item in data]
         else:
+            # Try to convert any remaining numpy types
+            if hasattr(data, 'item'):
+                return data.item()
             return data
             
     def merge_results(self, results_list: List[List[Dict]]) -> List[Dict]:
