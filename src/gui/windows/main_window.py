@@ -19,6 +19,7 @@ from src.gui.widgets.control_panel import ControlPanel
 from src.gui.widgets.file_processor import FileProcessorWidget
 from src.gui.workers.yolo_worker import YoloDetectionWorker
 from src.gui.workers.file_worker import FileProcessingWorker
+from src.gui.windows.window_fix import WaylandWindowMixin, apply_platform_specific_fixes
 from src.utils.version import (
     APP_NAME, VERSION_STRING, get_about_text,
     get_full_version
@@ -26,8 +27,8 @@ from src.utils.version import (
 
 logger = logging.getLogger(__name__)
 
-class MainWindow(QMainWindow):
-    """Main window"""
+class MainWindow(WaylandWindowMixin, QMainWindow):
+    """Main window with Wayland/Linux compatibility fixes"""
     
     def __init__(self):
         super().__init__()
@@ -45,7 +46,15 @@ class MainWindow(QMainWindow):
     def setup_ui(self):
         """Setup UI"""
         self.setWindowTitle(get_full_version())
+        
+        # Apply platform-specific fixes before setting geometry
+        apply_platform_specific_fixes(self)
+        
+        # Set initial geometry
         self.setGeometry(100, 100, 1400, 900)
+        
+        # Setup window management fixes (from WaylandWindowMixin)
+        self.setup_window_fixes()
         
         # スタイルシートの設定
         self.setStyleSheet("""
@@ -336,11 +345,8 @@ class MainWindow(QMainWindow):
             self.status_bar.showMessage("カメラ設定を更新しました")
     
     def toggle_fullscreen(self):
-        """フルスクリーンの切り替え"""
-        if self.isFullScreen():
-            self.showNormal()
-        else:
-            self.showFullScreen()
+        """Legacy fullscreen toggle - redirects to safe version"""
+        self.toggle_fullscreen_safe()
     
     def handle_error(self, error_message: str):
         """エラーの処理"""
