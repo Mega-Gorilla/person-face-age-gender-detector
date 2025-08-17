@@ -51,6 +51,9 @@ class FileProcessorWidget(QWidget):
         # Processing options
         left_layout.addWidget(self.create_processing_options())
         
+        # Face detection options
+        left_layout.addWidget(self.create_face_detection_options())
+        
         # Output settings
         left_layout.addWidget(self.create_output_settings())
         
@@ -170,6 +173,76 @@ class FileProcessorWidget(QWidget):
         self.draw_confidence_check = QCheckBox("Show confidence scores")
         self.draw_confidence_check.setChecked(True)
         layout.addWidget(self.draw_confidence_check)
+        
+        group.setLayout(layout)
+        return group
+        
+    def create_face_detection_options(self) -> QGroupBox:
+        """Create face detection options section"""
+        group = QGroupBox("Face Detection & Age/Gender")
+        group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #FF6B6B;
+                border-radius: 5px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                color: #FF6B6B;
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+        """)
+        layout = QVBoxLayout()
+        
+        # Face detection checkbox
+        self.face_detection_check = QCheckBox("Enable face detection")
+        self.face_detection_check.setStyleSheet("""
+            QCheckBox {
+                font-size: 13px;
+                color: #ffffff;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #4CAF50;
+            }
+        """)
+        self.face_detection_check.toggled.connect(self.on_face_detection_toggled)
+        layout.addWidget(self.face_detection_check)
+        
+        # Age/gender estimation checkbox
+        self.age_gender_check = QCheckBox("Enable age/gender estimation")
+        self.age_gender_check.setStyleSheet("""
+            QCheckBox {
+                font-size: 13px;
+                color: #ffffff;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #2196F3;
+            }
+        """)
+        self.age_gender_check.setEnabled(False)  # Disabled until face detection is enabled
+        layout.addWidget(self.age_gender_check)
+        
+        # Face confidence threshold
+        face_conf_layout = QHBoxLayout()
+        face_conf_layout.addWidget(QLabel("Face confidence:"))
+        self.face_confidence_combo = QComboBox()
+        self.face_confidence_combo.addItems([
+            "0.5 (Low)",
+            "0.7 (Medium)",
+            "0.8 (High)",
+            "0.9 (Very High)"
+        ])
+        self.face_confidence_combo.setCurrentIndex(2)  # Default to 0.8
+        self.face_confidence_combo.setEnabled(False)  # Disabled until face detection is enabled
+        face_conf_layout.addWidget(self.face_confidence_combo)
+        layout.addLayout(face_conf_layout)
+        
+        # Info label
+        self.face_info_label = QLabel("Face detection will increase processing time")
+        self.face_info_label.setStyleSheet("color: #FFB347; font-size: 11px; font-style: italic;")
+        layout.addWidget(self.face_info_label)
         
         group.setLayout(layout)
         return group
@@ -466,6 +539,10 @@ class FileProcessorWidget(QWidget):
         if not output_dir:
             output_dir = str(Path(self.current_file).parent)
             
+        # Parse face confidence value
+        face_conf_text = self.face_confidence_combo.currentText()
+        face_confidence = float(face_conf_text.split()[0])
+        
         return {
             'input_file': self.current_file,
             'model': self.model_combo.currentText().split()[0],
@@ -479,7 +556,11 @@ class FileProcessorWidget(QWidget):
             'data_format': self.data_format_combo.currentText(),
             'export_video': self.export_video_check.isChecked(),
             'export_data': self.export_data_check.isChecked(),
-            'export_frames': self.export_frames_check.isChecked()
+            'export_frames': self.export_frames_check.isChecked(),
+            # Face detection parameters
+            'enable_face_detection': self.face_detection_check.isChecked(),
+            'enable_age_gender': self.age_gender_check.isChecked(),
+            'face_confidence': face_confidence
         }
         
     def update_progress(self, current: int, total: int, fps: float, elapsed: float):
@@ -510,6 +591,25 @@ class FileProcessorWidget(QWidget):
         timestamp = datetime.now().strftime("%H:%M:%S")
         self.log_output.append(f"[{timestamp}] {message}")
         
+    def on_face_detection_toggled(self, checked: bool):
+        """Handle face detection toggle"""
+        # Enable/disable related controls
+        self.age_gender_check.setEnabled(checked)
+        self.face_confidence_combo.setEnabled(checked)
+        
+        # Disable age/gender if face detection is disabled
+        if not checked:
+            self.age_gender_check.setChecked(False)
+            
+        # Update info label
+        if checked:
+            if self.age_gender_check.isChecked():
+                self.face_info_label.setText("Face + age/gender will significantly increase processing time")
+            else:
+                self.face_info_label.setText("Face detection will moderately increase processing time")
+        else:
+            self.face_info_label.setText("Face detection will increase processing time")
+    
     def clear_results(self):
         """Clear all results"""
         self.results_table.setRowCount(0)

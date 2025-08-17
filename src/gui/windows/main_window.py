@@ -17,8 +17,8 @@ import logging
 from src.gui.widgets.video_display import VideoWidget
 from src.gui.widgets.control_panel import ControlPanel
 from src.gui.widgets.file_processor import FileProcessorWidget
-from src.gui.workers.yolo_worker import YoloDetectionWorker
-from src.gui.workers.file_worker import FileProcessingWorker
+from src.gui.workers.integrated_yolo_worker import IntegratedYoloWorker
+from src.gui.workers.integrated_file_worker import IntegratedFileWorker
 from src.gui.windows.window_fix import WaylandWindowMixin, apply_platform_specific_fixes
 from src.utils.version import (
     APP_NAME, VERSION_STRING, get_about_text,
@@ -217,6 +217,11 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
         self.control_panel.reset_stats_clicked.connect(self.reset_statistics)
         self.control_panel.camera_settings_changed.connect(self.update_camera_settings)
         
+        # Face detection signals
+        self.control_panel.face_detection_toggled.connect(self.update_face_detection)
+        self.control_panel.age_gender_toggled.connect(self.update_age_gender)
+        self.control_panel.face_confidence_changed.connect(self.update_face_confidence)
+        
         # Video widget signals
         self.video_widget.double_clicked.connect(self.toggle_fullscreen)
         
@@ -229,7 +234,7 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
     
     def setup_detection_worker(self):
         """Setup detection worker for stream mode"""
-        self.detection_worker = YoloDetectionWorker(self)
+        self.detection_worker = IntegratedYoloWorker(self)
         
         # Connect signals
         self.detection_worker.frame_ready.connect(self.video_widget.update_frame)
@@ -242,7 +247,7 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
     
     def setup_file_worker(self):
         """Setup file processing worker"""
-        self.file_worker = FileProcessingWorker(self)
+        self.file_worker = IntegratedFileWorker(self)
         
         # Connect signals
         self.file_worker.progress_updated.connect(self.file_tab.update_progress)
@@ -294,7 +299,7 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
     def update_confidence(self, value: float):
         """信頼度閾値の更新"""
         if self.detection_worker:
-            self.detection_worker.update_confidence_threshold(value)
+            self.detection_worker.update_threshold(value)
             self.status_bar.showMessage(f"信頼度閾値を更新: {value:.2f}")
     
     def update_model(self, model_name: str):
@@ -309,10 +314,31 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
             self.detection_worker.toggle_center_display()
             self.status_bar.showMessage(f"中心点表示: {'ON' if checked else 'OFF'}")
     
+    def update_face_detection(self, enabled: bool):
+        """Update face detection setting"""
+        if self.detection_worker:
+            self.detection_worker.toggle_face_detection(enabled)
+            self.status_bar.showMessage(f"Face detection: {'ON' if enabled else 'OFF'}")
+            logger.info(f"Face detection toggled: {enabled}")
+    
+    def update_age_gender(self, enabled: bool):
+        """Update age/gender estimation setting"""
+        if self.detection_worker:
+            self.detection_worker.toggle_age_gender(enabled)
+            self.status_bar.showMessage(f"Age/gender estimation: {'ON' if enabled else 'OFF'}")
+            logger.info(f"Age/gender estimation toggled: {enabled}")
+    
+    def update_face_confidence(self, value: float):
+        """Update face detection confidence threshold"""
+        if self.detection_worker:
+            self.detection_worker.set_face_confidence(value)
+            self.status_bar.showMessage(f"Face confidence threshold: {value:.2f}")
+    
     def reset_statistics(self):
         """統計のリセット"""
         if self.detection_worker:
-            self.detection_worker.reset_stats()
+            # IntegratedYoloWorker doesn't have reset_stats, just reset frame count
+            self.detection_worker.frame_count = 0
             self.status_bar.showMessage("統計をリセットしました")
     
     def update_camera_settings(self, settings: dict):
@@ -330,7 +356,7 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
                 self.detection_worker.stop()
             
             # 新しい設定でワーカーを再作成
-            self.detection_worker = YoloDetectionWorker(self)
+            self.detection_worker = IntegratedYoloWorker(self)
             self.detection_worker.camera_index = settings['camera_index']
             self.detection_worker.resolution = (settings['width'], settings['height'])
             self.detection_worker.fps = settings['fps']
@@ -355,16 +381,16 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
         self.status_bar.showMessage(f"エラー: {error_message}")
     
     def show_about(self):
-        """バージョン情報の表示"""
+        """Display version information"""
         QMessageBox.about(
             self,
-            "バージョン情報",
-            "YOLOv11 人物検出システム GUI版\n\n"
-            "Version: 2.0.0\n"
+            "About",
+            "YOLOv11 Person Detection System GUI\n\n"
+            "Version: 2.1.0\n"
             "Framework: PySide6 + YOLOv11\n"
-            "Author: YOLOv11 Development Team\n\n"
-            "最新のYOLOv11モデルを使用した\n"
-            "リアルタイム人物検出システムです。"
+            "Features: Face Detection + Age/Gender Estimation\n\n"
+            "Real-time person detection system with\n"
+            "integrated face analysis capabilities."
         )
     
     def closeEvent(self, event):

@@ -25,6 +25,11 @@ class ControlPanel(QWidget):
     reset_stats_clicked = Signal()
     camera_settings_changed = Signal(dict)
     
+    # 顔検出関連のシグナル
+    face_detection_toggled = Signal(bool)
+    age_gender_toggled = Signal(bool)
+    face_confidence_changed = Signal(float)
+    
     def __init__(self, parent=None):
         super().__init__(parent)
         
@@ -40,6 +45,9 @@ class ControlPanel(QWidget):
         
         # 検出設定
         layout.addWidget(self.create_detection_settings())
+        
+        # 顔検出設定
+        layout.addWidget(self.create_face_detection_settings())
         
         # カメラ設定
         layout.addWidget(self.create_camera_settings())
@@ -164,6 +172,95 @@ class ControlPanel(QWidget):
         self.center_display_check = QCheckBox("検出ボックスの中心点を表示")
         self.center_display_check.toggled.connect(self.center_display_toggled.emit)
         layout.addWidget(self.center_display_check)
+        
+        group.setLayout(layout)
+        return group
+    
+    def create_face_detection_settings(self) -> QGroupBox:
+        """顔検出設定の作成"""
+        group = QGroupBox("顔検出・年齢性別推定")
+        group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #FF6B6B;
+                border-radius: 5px;
+                margin-top: 10px;
+            }
+            QGroupBox::title {
+                color: #FF6B6B;
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        
+        # 顔検出チェックボックス
+        self.face_detection_check = QCheckBox("顔検出を有効にする")
+        self.face_detection_check.setStyleSheet("""
+            QCheckBox {
+                font-size: 13px;
+                color: #ffffff;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #4CAF50;
+            }
+        """)
+        self.face_detection_check.toggled.connect(self.on_face_detection_toggled)
+        layout.addWidget(self.face_detection_check)
+        
+        # 年齢性別推定チェックボックス
+        self.age_gender_check = QCheckBox("年齢・性別推定を有効にする")
+        self.age_gender_check.setStyleSheet("""
+            QCheckBox {
+                font-size: 13px;
+                color: #ffffff;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #2196F3;
+            }
+        """)
+        self.age_gender_check.setEnabled(False)  # 顔検出が有効な時のみ使用可
+        self.age_gender_check.toggled.connect(self.age_gender_toggled.emit)
+        layout.addWidget(self.age_gender_check)
+        
+        # 顔検出信頼度スライダー
+        face_conf_layout = QVBoxLayout()
+        
+        # ラベル
+        face_conf_label_layout = QHBoxLayout()
+        face_conf_label_layout.addWidget(QLabel("顔検出信頼度:"))
+        self.face_confidence_value_label = QLabel("0.80")
+        self.face_confidence_value_label.setStyleSheet("font-weight: bold; color: #FF6B6B;")
+        face_conf_label_layout.addWidget(self.face_confidence_value_label)
+        face_conf_label_layout.addStretch()
+        face_conf_layout.addLayout(face_conf_label_layout)
+        
+        # スライダー
+        self.face_confidence_slider = QSlider(Qt.Horizontal)
+        self.face_confidence_slider.setMinimum(50)
+        self.face_confidence_slider.setMaximum(95)
+        self.face_confidence_slider.setValue(80)
+        self.face_confidence_slider.setEnabled(False)  # 顔検出が有効な時のみ使用可
+        self.face_confidence_slider.valueChanged.connect(self.on_face_confidence_changed)
+        face_conf_layout.addWidget(self.face_confidence_slider)
+        
+        layout.addLayout(face_conf_layout)
+        
+        # 顔検出統計
+        self.face_stats_layout = QGridLayout()
+        self.face_stats_layout.addWidget(QLabel("検出顔数:"), 0, 0)
+        self.face_count_label = QLabel("0")
+        self.face_count_label.setStyleSheet("color: #FF6B6B; font-weight: bold;")
+        self.face_stats_layout.addWidget(self.face_count_label, 0, 1)
+        
+        self.face_stats_layout.addWidget(QLabel("性別:"), 1, 0)
+        self.gender_label = QLabel("M:0 F:0")
+        self.gender_label.setStyleSheet("color: #9C27B0;")
+        self.face_stats_layout.addWidget(self.gender_label, 1, 1)
+        
+        layout.addLayout(self.face_stats_layout)
         
         group.setLayout(layout)
         return group
@@ -294,14 +391,21 @@ class ControlPanel(QWidget):
             f"{stats.get('processing_time', 0) * 1000:.1f} ms"
         )
         self.detection_count_label.setText(
-            str(stats.get('detection_count', 0))
+            str(stats.get('person_count', 0))  # 'detection_count' -> 'person_count'
         )
         self.total_frames_label.setText(
-            str(stats.get('total_frames', 0))
+            str(stats.get('frame_count', 0))  # 'total_frames' -> 'frame_count'
         )
         self.total_detections_label.setText(
             str(stats.get('total_detections', 0))
         )
+        
+        # 顔検出統計の更新
+        if 'face_count' in stats:
+            self.update_face_statistics(
+                stats['face_count'],
+                stats.get('gender_distribution')
+            )
     
     def set_play_state(self, is_playing: bool):
         """Set play/pause state programmatically"""
@@ -310,3 +414,33 @@ class ControlPanel(QWidget):
             self.play_pause_btn.setText("⏸ Pause")
         else:
             self.play_pause_btn.setText("▶ Play")
+    
+    def on_face_detection_toggled(self, checked):
+        """顔検出チェックボックスの変更処理"""
+        # 関連コントロールの有効/無効切り替え
+        self.age_gender_check.setEnabled(checked)
+        self.face_confidence_slider.setEnabled(checked)
+        
+        # 顔検出が無効の場合、年齢性別推定も無効にする
+        if not checked:
+            self.age_gender_check.setChecked(False)
+        
+        # シグナル送信
+        self.face_detection_toggled.emit(checked)
+    
+    def on_face_confidence_changed(self, value):
+        """顔検出信頼度スライダーの変更処理"""
+        confidence = value / 100.0
+        self.face_confidence_value_label.setText(f"{confidence:.2f}")
+        self.face_confidence_changed.emit(confidence)
+    
+    def update_face_statistics(self, face_count: int, gender_dist: dict = None):
+        """顔検出統計の更新"""
+        self.face_count_label.setText(str(face_count))
+        
+        if gender_dist:
+            male = gender_dist.get('Male', 0)
+            female = gender_dist.get('Female', 0)
+            self.gender_label.setText(f"M:{male} F:{female}")
+        else:
+            self.gender_label.setText("M:0 F:0")
