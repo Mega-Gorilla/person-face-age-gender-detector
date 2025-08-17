@@ -7,8 +7,8 @@ APP_NAME = "YOLOv11 Person Detection System"
 APP_SHORT_NAME = "YOLO11-PDS"
 
 # Version information
-MAJOR = 1
-MINOR = 0
+MAJOR = 2
+MINOR = 1
 PATCH = 0
 VERSION_STRING = f"{MAJOR}.{MINOR}.{PATCH}"
 
@@ -17,8 +17,8 @@ RELEASE_DATE = "2025-08-17"
 RELEASE_TYPE = "stable"  # stable, beta, alpha, dev
 
 # Build information
-BUILD_NUMBER = "20250817"
-CODENAME = "Eagle Eye"
+BUILD_NUMBER = "20250817.2"
+CODENAME = "Dual Vision"
 
 # Author information
 AUTHOR = "Person Detection Team"
@@ -38,7 +38,10 @@ FEATURES = {
     "multi_camera": False,
     "tracking": False,
     "face_detection": False,
-    "age_gender": False
+    "age_gender": False,
+    "tab_interface": True,
+    "export_formats": True,
+    "drag_drop": True
 }
 
 # Supported formats
