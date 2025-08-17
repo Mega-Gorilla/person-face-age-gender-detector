@@ -18,6 +18,8 @@ ADVANCED_MODELS_AVAILABLE = False
 try:
     from src.core.face_detector_advanced import AdvancedFaceDetector
     from src.core.age_gender_advanced import AdvancedAgeGenderEstimator
+    # Also try to import Caffe models
+    from src.core.age_gender_caffe import CaffeAgeGenderEstimator, SimpleCaffeAgeGenderEstimator, check_gdown_installed
     ADVANCED_MODELS_AVAILABLE = True
     logger.info("Advanced models available, using optimized implementations")
 except ImportError as e:
@@ -94,13 +96,26 @@ class StableDetectionPipeline:
                         temporal_window=self.temporal_window
                     )
             
-            # Age/Gender estimator - use advanced if available
+            # Age/Gender estimator - use best available model
             if self.enable_age_gender:
                 if self.use_advanced_models:
-                    logger.info("Initializing advanced age/gender estimator (ONNX)...")
-                    self.age_gender_estimator = AdvancedAgeGenderEstimator(
-                        use_gpu=self.config.get('use_gpu', False)
-                    )
+                    # Try Caffe models first (most reliable)
+                    try:
+                        if check_gdown_installed():
+                            logger.info("Initializing Caffe age/gender estimator...")
+                            self.age_gender_estimator = CaffeAgeGenderEstimator(
+                                use_gpu=self.config.get('use_gpu', False)
+                            )
+                        else:
+                            logger.info("Using simplified age/gender estimator (install gdown for better models)")
+                            self.age_gender_estimator = SimpleCaffeAgeGenderEstimator()
+                    except Exception as e:
+                        logger.warning(f"Failed to initialize Caffe models: {e}")
+                        # Fallback to ONNX models
+                        logger.info("Falling back to ONNX age/gender estimator...")
+                        self.age_gender_estimator = AdvancedAgeGenderEstimator(
+                            use_gpu=self.config.get('use_gpu', False)
+                        )
                 else:
                     logger.info("Initializing standard age/gender estimator...")
                     try:
@@ -357,11 +372,15 @@ class StableDetectionPipeline:
         self.age_gender_history.clear()
         
         if self.face_detector:
-            # Reset face detector tracking
-            self.face_detector.tracks.clear()
-            self.face_detector.next_track_id = 0
-            self.face_detector.frame_count = 0
-            self.face_detector.detection_history.clear()
+            # Reset face detector tracking if attributes exist
+            if hasattr(self.face_detector, 'tracks'):
+                self.face_detector.tracks.clear()
+            if hasattr(self.face_detector, 'next_track_id'):
+                self.face_detector.next_track_id = 0
+            if hasattr(self.face_detector, 'frame_count'):
+                self.face_detector.frame_count = 0
+            if hasattr(self.face_detector, 'detection_history'):
+                self.face_detector.detection_history.clear()
         
         logger.info("Stable pipeline state reset")
     
@@ -385,9 +404,13 @@ class StableDetectionPipeline:
     
     def get_performance_metrics(self) -> Dict:
         """Get pipeline performance metrics"""
+        face_tracks = 0
+        if self.face_detector and hasattr(self.face_detector, 'tracks'):
+            face_tracks = len(self.face_detector.tracks)
+        
         metrics = {
             'total_frames': self.frame_count,
-            'face_detector_tracks': len(self.face_detector.tracks) if self.face_detector else 0,
+            'face_detector_tracks': face_tracks,
             'age_gender_cache_size': len(self.age_gender_history)
         }
         
