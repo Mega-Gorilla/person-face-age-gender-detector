@@ -13,6 +13,17 @@ from src.core.age_gender import AgeGenderEstimator, SimpleAgeGenderEstimator
 
 logger = logging.getLogger(__name__)
 
+# Try to use advanced models if available
+ADVANCED_MODELS_AVAILABLE = False
+try:
+    from src.core.face_detector_advanced import AdvancedFaceDetector
+    from src.core.age_gender_advanced import AdvancedAgeGenderEstimator
+    ADVANCED_MODELS_AVAILABLE = True
+    logger.info("Advanced models available, using optimized implementations")
+except ImportError as e:
+    ADVANCED_MODELS_AVAILABLE = False
+    logger.info("Advanced models not available, using standard implementations")
+
 
 class StableDetectionPipeline:
     """
@@ -39,6 +50,9 @@ class StableDetectionPipeline:
         self.min_face_frames = self.config.get('min_face_frames', 3)
         self.temporal_window = self.config.get('temporal_window', 5)
         
+        # Use advanced models preference
+        self.use_advanced_models = self.config.get('use_advanced_models', True) and ADVANCED_MODELS_AVAILABLE
+        
         # Initialize components
         self.person_detector = None
         self.face_detector = None
@@ -62,27 +76,41 @@ class StableDetectionPipeline:
                 confidence_threshold=self.config.get('person_confidence', 0.5)
             )
             
-            # Stable face detector
+            # Face detector - use advanced if available
             if self.enable_face_detection:
-                logger.info("Initializing stable face detector...")
-                self.face_detector = StableFaceDetector(
-                    detection_confidence=self.face_detection_confidence,
-                    tracking_iou_threshold=self.face_tracking_iou,
-                    min_detection_frames=self.min_face_frames,
-                    temporal_window=self.temporal_window
-                )
+                if self.use_advanced_models:
+                    logger.info("Initializing advanced face detector (YuNet)...")
+                    self.face_detector = AdvancedFaceDetector(
+                        confidence_threshold=self.face_detection_confidence,
+                        nms_threshold=0.3,
+                        input_size=(320, 320)
+                    )
+                else:
+                    logger.info("Initializing stable face detector...")
+                    self.face_detector = StableFaceDetector(
+                        detection_confidence=self.face_detection_confidence,
+                        tracking_iou_threshold=self.face_tracking_iou,
+                        min_detection_frames=self.min_face_frames,
+                        temporal_window=self.temporal_window
+                    )
             
-            # Age/Gender estimator
+            # Age/Gender estimator - use advanced if available
             if self.enable_age_gender:
-                logger.info("Initializing age/gender estimator...")
-                try:
-                    self.age_gender_estimator = AgeGenderEstimator(
-                        model_path=self.config.get('age_gender_model'),
+                if self.use_advanced_models:
+                    logger.info("Initializing advanced age/gender estimator (ONNX)...")
+                    self.age_gender_estimator = AdvancedAgeGenderEstimator(
                         use_gpu=self.config.get('use_gpu', False)
                     )
-                except Exception as e:
-                    logger.warning(f"Failed to initialize AgeGenderEstimator: {e}")
-                    self.age_gender_estimator = SimpleAgeGenderEstimator()
+                else:
+                    logger.info("Initializing standard age/gender estimator...")
+                    try:
+                        self.age_gender_estimator = AgeGenderEstimator(
+                            model_path=self.config.get('age_gender_model'),
+                            use_gpu=self.config.get('use_gpu', False)
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to initialize AgeGenderEstimator: {e}")
+                        self.age_gender_estimator = SimpleAgeGenderEstimator()
             
             logger.info("Stable pipeline initialization complete")
             
