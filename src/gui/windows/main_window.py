@@ -125,6 +125,12 @@ class MainWindow(QMainWindow):
             }
         """)
         
+        # Connect tab change signal
+        self.tab_widget.currentChanged.connect(self.on_tab_changed)
+        
+        # Track current tab
+        self.current_tab_index = 0
+        
     def setup_stream_tab(self):
         """Setup stream tab layout"""
         # Main layout for stream tab
@@ -208,6 +214,9 @@ class MainWindow(QMainWindow):
         # File processor signals (File tab)
         self.file_tab.process_started.connect(self.on_file_processing_started)
         self.file_tab.process_stopped.connect(self.on_file_processing_stopped)
+        
+        # Store stream state
+        self.stream_was_running = False
     
     def setup_detection_worker(self):
         """Setup detection worker for stream mode"""
@@ -379,6 +388,12 @@ class MainWindow(QMainWindow):
     
     def on_file_processing_started(self, params: dict):
         """Handle file processing start"""
+        # Make sure stream is paused when file processing starts
+        if self.detection_worker and self.control_panel.is_playing:
+            self.detection_worker.pause()
+            self.control_panel.set_play_state(False)
+            logger.info("Auto-paused stream detection for file processing")
+        
         if not self.file_worker:
             self.setup_file_worker()
         
@@ -409,3 +424,41 @@ class MainWindow(QMainWindow):
         logger.error(f"File processing error: {error_message}")
         QMessageBox.critical(self, "Error", f"File processing error: {error_message}")
         self.status_bar.showMessage(f"Error: {error_message}")
+    
+    def on_tab_changed(self, index: int):
+        """Handle tab change event"""
+        logger.info(f"Tab changed to index {index}")
+        
+        # Stream tab (index 0)
+        if index == 0:
+            # Switching to Stream tab
+            if self.stream_was_running and self.detection_worker:
+                # Resume stream detection if it was running before
+                self.detection_worker.resume()
+                self.control_panel.set_play_state(True)
+                self.status_bar.showMessage("Stream detection resumed")
+                logger.info("Resumed stream detection on tab switch")
+            
+            # Stop file processing if running
+            if self.file_worker and self.file_worker.isRunning():
+                self.file_worker.stop()
+                # Only call stop_processing if file_tab is currently processing
+                if hasattr(self.file_tab, 'processing') and self.file_tab.processing:
+                    self.file_tab.stop_processing()
+                logger.info("Stopped file processing on tab switch")
+                
+        # File tab (index 1)
+        elif index == 1:
+            # Switching to File tab
+            if self.detection_worker:
+                # Check if stream is currently running
+                self.stream_was_running = self.control_panel.is_playing
+                
+                # Pause stream detection to save resources
+                if self.stream_was_running:
+                    self.detection_worker.pause()
+                    self.control_panel.set_play_state(False)
+                    self.status_bar.showMessage("Stream detection paused (File tab active)")
+                    logger.info("Paused stream detection for resource optimization")
+        
+        self.current_tab_index = index

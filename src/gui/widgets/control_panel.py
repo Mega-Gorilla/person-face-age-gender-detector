@@ -302,3 +302,11 @@ class ControlPanel(QWidget):
         self.total_detections_label.setText(
             str(stats.get('total_detections', 0))
         )
+    
+    def set_play_state(self, is_playing: bool):
+        """Set play/pause state programmatically"""
+        self.is_playing = is_playing
+        if self.is_playing:
+            self.play_pause_btn.setText("⏸ Pause")
+        else:
+            self.play_pause_btn.setText("▶ Play")
