@@ -152,10 +152,17 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
         self.video_widget = VideoWidget()
         splitter.addWidget(self.video_widget)
         
-        # Right side: Control panel
+        # Right side: Control panel in scroll area
+        from PySide6.QtWidgets import QScrollArea
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
         self.control_panel = ControlPanel()
-        self.control_panel.setMaximumWidth(350)
-        splitter.addWidget(self.control_panel)
+        scroll_area.setWidget(self.control_panel)
+        scroll_area.setMaximumWidth(350)
+        splitter.addWidget(scroll_area)
         
         # Initial splitter ratio
         splitter.setSizes([1050, 350])

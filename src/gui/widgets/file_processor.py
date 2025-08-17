@@ -41,7 +41,13 @@ class FileProcessorWidget(QWidget):
         # Create splitter for main layout
         splitter = QSplitter(Qt.Horizontal)
         
-        # Left panel - Controls
+        # Left panel - Controls in scroll area
+        from PySide6.QtWidgets import QScrollArea
+        left_scroll = QScrollArea()
+        left_scroll.setWidgetResizable(True)
+        left_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        left_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
         left_panel = QWidget()
         left_layout = QVBoxLayout(left_panel)
         
@@ -65,6 +71,10 @@ class FileProcessorWidget(QWidget):
         
         left_layout.addStretch()
         
+        left_scroll.setWidget(left_panel)
+        left_scroll.setMinimumWidth(350)
+        left_scroll.setMaximumWidth(450)
+        
         # Right panel - Results
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
@@ -73,7 +83,7 @@ class FileProcessorWidget(QWidget):
         right_layout.addWidget(self.create_results_display())
         
         # Add panels to splitter
-        splitter.addWidget(left_panel)
+        splitter.addWidget(left_scroll)
         splitter.addWidget(right_panel)
         splitter.setSizes([400, 600])
         
