@@ -211,7 +211,7 @@ class StableDetectionPipeline:
                     track_id = face.get('track_id')
                     
                     # Step 3: Age/Gender estimation with smoothing
-                    if do_age and track_id is not None:
+                    if do_age:
                         if self.age_gender_estimator:
                             age_start = time.time()
                             
@@ -227,9 +227,13 @@ class StableDetectionPipeline:
                                     frame  # Pass full frame as person image
                                 )
                                 
-                                # Apply temporal smoothing for age/gender
-                                smoothed_age_gender = self._smooth_age_gender(track_id, age_gender)
-                                face.update(smoothed_age_gender)
+                                # Apply temporal smoothing for age/gender if track_id available
+                                if track_id is not None:
+                                    smoothed_age_gender = self._smooth_age_gender(track_id, age_gender)
+                                    face.update(smoothed_age_gender)
+                                else:
+                                    # No tracking, use raw estimate
+                                    face.update(age_gender)
                             else:
                                 # Empty ROI
                                 face.update({
