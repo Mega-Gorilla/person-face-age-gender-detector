@@ -84,7 +84,7 @@ class CoordinateExporter:
                         x1, y1, x2, y2,
                         width, height, center_x, center_y,
                         f"{detection.get('confidence', 0.0):.3f}",
-                        detection.get('class', 'unknown'),
+                        detection.get('class_name', detection.get('class', 'person')),
                         area
                     ])
                     
