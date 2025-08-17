@@ -3,3 +3,9 @@ opencv-python
 numpy
 Pillow
 PySide6>=6.6.0
+
+# Face detection and age/gender estimation
+insightface>=0.7.3
+onnxruntime>=1.16.0
+timm>=0.9.0
+albumentations>=1.3.0
