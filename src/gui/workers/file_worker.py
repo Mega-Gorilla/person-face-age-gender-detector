@@ -164,9 +164,10 @@ class FileProcessingWorker(QThread):
                 annotated_frame = self.visualizer.draw_detections(
                     frame,
                     detections,
+                    show_center=False,  # Don't show center point for file processing
+                    show_confidence=self.params['draw_confidence'],
                     show_boxes=self.params['draw_boxes'],
-                    show_labels=self.params['draw_labels'],
-                    show_confidence=self.params['draw_confidence']
+                    show_labels=self.params['draw_labels']
                 )
             else:
                 annotated_frame = frame

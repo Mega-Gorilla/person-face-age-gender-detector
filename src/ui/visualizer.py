@@ -29,7 +29,9 @@ class Visualizer:
         frame: np.ndarray,
         detections: List[Dict],
         show_center: bool = True,
-        show_confidence: bool = True
+        show_confidence: bool = True,
+        show_boxes: bool = True,
+        show_labels: bool = True
     ) -> np.ndarray:
         """
         検出結果を描画
@@ -39,6 +41,8 @@ class Visualizer:
             detections: 検出結果のリスト
             show_center: 中心点を表示するか
             show_confidence: 信頼度を表示するか
+            show_boxes: バウンディングボックスを表示するか
+            show_labels: ラベルを表示するか
             
         Returns:
             描画済みフレーム
@@ -46,12 +50,14 @@ class Visualizer:
         annotated_frame = frame.copy()
         
         for i, detection in enumerate(detections):
-            self._draw_detection_box(
-                annotated_frame,
-                detection,
-                person_id=i+1,
-                show_confidence=show_confidence
-            )
+            if show_boxes:
+                self._draw_detection_box(
+                    annotated_frame,
+                    detection,
+                    person_id=i+1,
+                    show_confidence=show_confidence,
+                    show_label=show_labels
+                )
             
             if show_center:
                 self._draw_center_point(annotated_frame, detection)
@@ -63,7 +69,8 @@ class Visualizer:
         frame: np.ndarray,
         detection: Dict,
         person_id: int,
-        show_confidence: bool
+        show_confidence: bool,
+        show_label: bool = True
     ) -> None:
         """
         検出ボックスを描画
@@ -73,17 +80,19 @@ class Visualizer:
             detection: 検出結果
             person_id: 人物ID
             show_confidence: 信頼度を表示するか
+            show_label: ラベルを表示するか
         """
         x1, y1, x2, y2 = detection['bbox']
         
         cv2.rectangle(frame, (x1, y1), (x2, y2), self.colors['person'], 2)
         
-        if show_confidence:
-            label = f"Person #{person_id} ({detection['confidence']:.2%})"
-        else:
-            label = f"Person #{person_id}"
-        
-        self._draw_label(frame, label, (x1, y1))
+        if show_label:
+            if show_confidence:
+                label = f"Person #{person_id} ({detection['confidence']:.2%})"
+            else:
+                label = f"Person #{person_id}"
+            
+            self._draw_label(frame, label, (x1, y1))
     
     def _draw_label(
         self,
