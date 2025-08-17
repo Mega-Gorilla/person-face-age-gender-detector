@@ -41,6 +41,12 @@ env/
 .DS_Store
 .claude/
 
+# Claude.ai specific files
+CLAUDE.md
+claude.md
+*/CLAUDE.md
+*/claude.md
+
 # Project specific
 screenshot_*.jpg
 *.png
