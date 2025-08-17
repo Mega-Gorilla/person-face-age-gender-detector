@@ -19,7 +19,10 @@ pip install -r requirements.txt
 
 ### Running the Application
 ```bash
-# Basic execution with default YOLOv11n model
+# GUI version (recommended)
+python gui_main.py
+
+# CUI version with default YOLOv11n model
 python main.py
 
 # High accuracy mode with YOLOv11m or YOLOv11x
@@ -28,7 +31,10 @@ python main.py --model yolo11m.pt --confidence 0.7
 # Test without camera (system verification)
 python debug/test_detector.py
 
-# Debug mode with detailed logging
+# Test GUI components
+python debug/test_gui.py
+
+# Debug mode with detailed logging (CUI)
 python main.py --debug
 ```
 
@@ -97,12 +103,19 @@ tracked = tracker.update_with_detections(detections)
 
 ## Important Files
 
-- `main.py`: Entry point with argument parsing and main loop
+- `gui_main.py`: GUI application entry point (PySide6)
+- `main.py`: CUI application entry point
 - `src/core/detector.py`: Core YOLOv11 detection logic
 - `src/core/camera.py`: Camera management with fallback logic
-- `src/ui/visualizer.py`: All visualization and overlay functions
+- `src/gui/windows/main_window.py`: Main GUI window implementation
+- `src/gui/widgets/video_display.py`: Video display widget
+- `src/gui/widgets/control_panel.py`: Control panel widget
+- `src/gui/workers/yolo_worker.py`: Detection worker thread
+- `src/gui/README.md`: GUI architecture documentation
+- `src/ui/visualizer.py`: CUI visualization functions
 - `src/utils/performance.py`: FPS and timing metrics
 - `debug/test_detector.py`: Component verification script
+- `debug/test_gui.py`: GUI component test script
 - `docs/model_evaluation.md`: YOLOv11 performance analysis
 - `docs/optimization_guide.md`: Enhancement recommendations
 

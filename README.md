@@ -5,6 +5,7 @@ PCカメラからリアルタイムで人物を検出するアプリケーショ
 ## 特徴
 
 - **最新技術**: YOLOv11（2025年最新モデル）を使用
+- **GUI版提供**: PySide6による直感的な操作インターフェース
 - **高速処理**: リアルタイム検出（30+ FPS）
 - **モジュール設計**: 拡張性の高いコード構造
 - **パフォーマンス監視**: FPSと処理時間の表示
@@ -22,13 +23,28 @@ pip install -r requirements.txt
 
 ## 使用方法
 
-### 基本実行
+### GUI版（推奨）
 
 ```bash
+# GUIアプリケーションを起動
+python gui_main.py
+```
+
+**GUI版の特徴：**
+- ボタンによる操作（一時停止、スクリーンショット等）
+- スライダーによる信頼度調整
+- リアルタイム統計表示
+- モデル選択ドロップダウン
+- カメラ設定の動的変更
+
+### CUI版（従来版）
+
+```bash
+# コマンドライン版を起動
 python main.py
 ```
 
-### オプション指定
+### CUI版オプション指定
 
 ```bash
 # 高精度モデルを使用
@@ -49,6 +65,15 @@ python main.py --debug
 
 ## 操作方法
 
+### GUI版
+マウスでボタンをクリックして操作：
+- **一時停止/再生ボタン**: 検出の一時停止と再開
+- **スクリーンショットボタン**: 現在の画面を保存
+- **信頼度スライダー**: リアルタイムで閾値調整
+- **モデル選択**: ドロップダウンからモデル変更
+- **メニューバー**: ファイル操作、表示設定、ヘルプ
+
+### CUI版（キーボード操作）
 | キー | 機能 |
 |------|------|
 | `q` / `ESC` | 終了 |
@@ -63,22 +88,33 @@ python main.py --debug
 
 ```
 person-face-age-gender-detector/
-├── main.py                 # メインエントリーポイント
-├── requirements.txt        # 依存関係
+├── gui_main.py            # GUI版エントリーポイント
+├── main.py                # CUI版エントリーポイント
+├── requirements.txt       # 依存関係
 ├── src/
-│   ├── core/              # コア機能
-│   │   ├── detector.py    # 人物検出エンジン
-│   │   └── camera.py      # カメラ制御
-│   ├── ui/                # UI関連
-│   │   └── visualizer.py  # 検出結果の可視化
-│   └── utils/             # ユーティリティ
+│   ├── core/             # コア機能
+│   │   ├── detector.py   # 人物検出エンジン
+│   │   └── camera.py     # カメラ制御
+│   ├── gui/              # GUI関連（PySide6）
+│   │   ├── windows/      # ウィンドウクラス
+│   │   │   └── main_window.py
+│   │   ├── widgets/      # UIウィジェット
+│   │   │   ├── video_display.py
+│   │   │   └── control_panel.py
+│   │   ├── workers/      # ワーカースレッド
+│   │   │   └── yolo_worker.py
+│   │   └── README.md     # GUI構造ドキュメント
+│   ├── ui/               # CUI版UI関連
+│   │   └── visualizer.py # 検出結果の可視化
+│   └── utils/            # ユーティリティ
 │       └── performance.py # パフォーマンス監視
-├── debug/                 # デバッグ・テスト用
-│   └── test_detector.py   # システムテストスクリプト
-├── docs/                  # ドキュメント
+├── debug/                # デバッグ・テスト用
+│   ├── test_detector.py  # システムテスト
+│   └── test_gui.py      # GUIテスト
+├── docs/                 # ドキュメント
 │   ├── model_evaluation.md # モデル評価レポート
 │   └── optimization_guide.md # 最適化ガイド
-└── .venv/                 # Python仮想環境
+└── .venv/                # Python仮想環境
 ```
 
 ## モデルバリエーション

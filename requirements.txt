@@ -2,3 +2,4 @@ ultralytics
 opencv-python
 numpy
 Pillow
+PySide6>=6.6.0
