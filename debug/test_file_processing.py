@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for file processing mode
+Test script for file processing mode with H.264 compression
 """
 
 import sys
@@ -18,6 +18,7 @@ from src.core.detector import PersonDetector
 from src.ui.visualizer import Visualizer
 from src.utils.coordinate_exporter import CoordinateExporter
 from src.core.common import format_detection_for_export, calculate_detection_stats
+from src.utils.video_codec import VideoCodecManager
 import cv2
 
 def test_file_processing():
@@ -68,15 +69,18 @@ def test_file_processing():
         
         logger.info(f"Video info: {width}x{height} @ {fps:.1f}fps, {total_frames} frames")
         
-        # Prepare output video
+        # Prepare output video with compression
         output_video_path = output_dir / "test_output.mp4"
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out_video = cv2.VideoWriter(
+        logger.info("Creating video writer with optimized codec...")
+        out_video = VideoCodecManager.create_video_writer(
             str(output_video_path),
-            fourcc,
             fps,
-            (width, height)
+            (width, height),
+            use_h264=True  # Will use best available codec
         )
+        
+        if out_video is None:
+            raise RuntimeError("Failed to create video writer")
         
         # Process frames
         logger.info("Processing frames...")
@@ -175,9 +179,22 @@ def test_file_processing():
         
         # Verify outputs
         logger.info(f"\n=== Output Files ===")
-        logger.info(f"Video: {output_video_path} ({output_video_path.stat().st_size / 1024 / 1024:.1f} MB)")
+        video_size_mb = output_video_path.stat().st_size / 1024 / 1024
+        logger.info(f"Video: {output_video_path} ({video_size_mb:.1f} MB)")
         logger.info(f"JSON: {json_path} ({json_path.stat().st_size / 1024:.1f} KB)")
         logger.info(f"CSV: {csv_path} ({csv_path.stat().st_size / 1024:.1f} KB)")
+        
+        # Check compression
+        original_size_mb = video_path.stat().st_size / 1024 / 1024
+        logger.info(f"\n=== Compression Results ===")
+        logger.info(f"Original video size: {original_size_mb:.2f} MB")
+        logger.info(f"Output video size: {video_size_mb:.2f} MB")
+        if video_size_mb < original_size_mb:
+            reduction = ((original_size_mb - video_size_mb) / original_size_mb) * 100
+            logger.info(f"✅ Size reduced by {reduction:.1f}%")
+        else:
+            increase = ((video_size_mb - original_size_mb) / original_size_mb) * 100
+            logger.info(f"⚠️ Size increased by {increase:.1f}% (original was already compressed)")
         
         # Test sample frame
         if all_detections and all_detections[0]['detections']:

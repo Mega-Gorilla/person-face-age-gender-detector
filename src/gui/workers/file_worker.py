@@ -15,6 +15,7 @@ import numpy as np
 from src.core.detector import PersonDetector
 from src.ui.visualizer import Visualizer
 from src.utils.coordinate_exporter import CoordinateExporter
+from src.utils.video_codec import VideoCodecManager
 
 logger = logging.getLogger(__name__)
 
@@ -102,20 +103,31 @@ class FileProcessingWorker(QThread):
         output_dir = Path(self.params['output_dir'])
         base_name = input_path.stem
         
-        # Video writer
+        # Video writer with H.264 compression
         if self.params['export_video']:
             video_format = self.params['video_format']
             video_path = output_dir / f"{base_name}_detected{video_format}"
             
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v') if video_format == '.mp4' else cv2.VideoWriter_fourcc(*'XVID')
-            output_files['video_writer'] = cv2.VideoWriter(
+            # Use H.264 codec through VideoCodecManager
+            writer = VideoCodecManager.create_video_writer(
                 str(video_path),
-                fourcc,
                 fps,
-                (width, height)
+                (width, height),
+                use_h264=True
             )
+            
+            if writer is None:
+                raise RuntimeError(f"Failed to create video writer for {video_path}")
+            
+            output_files['video_writer'] = writer
             output_files['video_path'] = str(video_path)
-            self.log_message.emit(f"Output video: {video_path}")
+            
+            # Log codec info
+            codec_info = VideoCodecManager.ensure_h264_support()
+            if codec_info:
+                self.log_message.emit(f"Output video: {video_path} (H.264 compression)")
+            else:
+                self.log_message.emit(f"Output video: {video_path} (fallback codec)")
             
         # Data file
         if self.params['export_data']:
