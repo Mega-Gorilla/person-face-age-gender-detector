@@ -243,13 +243,17 @@ class StableDetectionPipeline:
                                     frame  # Pass full frame as person image
                                 )
                                 
-                                # Apply temporal smoothing for age/gender if track_id available
+                                # Apply temporal smoothing for age/gender
                                 if track_id is not None:
+                                    # Use track-based smoothing for tracked faces
                                     smoothed_age_gender = self._smooth_age_gender(track_id, age_gender)
                                     face.update(smoothed_age_gender)
                                 else:
-                                    # No tracking, use raw estimate
-                                    face.update(age_gender)
+                                    # Use global smoothing for non-tracked faces
+                                    # Create temporary track_id based on face position
+                                    temp_track_id = f"temp_{person_idx}_{face_idx}"
+                                    smoothed_age_gender = self._smooth_age_gender(temp_track_id, age_gender)
+                                    face.update(smoothed_age_gender)
                             else:
                                 # Empty ROI
                                 face.update({
@@ -297,47 +301,119 @@ class StableDetectionPipeline:
         return results
     
     def _smooth_age_gender(self, track_id: int, age_gender: Dict) -> Dict:
-        """Apply temporal smoothing to age/gender estimates"""
+        """Apply improved temporal smoothing to age/gender estimates"""
         # Initialize history if needed
         if track_id not in self.age_gender_history:
             self.age_gender_history[track_id] = {
                 'ages': [],
                 'genders': [],
-                'confidences': []
+                'age_confidences': [],
+                'gender_confidences': [],
+                'timestamps': []  # Add timestamps for better temporal weighting
             }
         
         history = self.age_gender_history[track_id]
+        current_time = time.time()
         
-        # Add to history (keep last 10 estimates)
+        # Add to history with confidence weighting
         if age_gender.get('age') is not None:
             history['ages'].append(age_gender['age'])
-            history['ages'] = history['ages'][-10:]
+            history['ages'] = history['ages'][-20:]  # Keep more history
+            
+            # Store age confidence
+            age_conf = age_gender.get('age_confidence', 0.5)
+            history['age_confidences'].append(age_conf)
+            history['age_confidences'] = history['age_confidences'][-20:]
+            
+            # Store timestamp
+            history['timestamps'].append(current_time)
+            history['timestamps'] = history['timestamps'][-20:]
         
         if age_gender.get('gender') is not None:
             history['genders'].append(age_gender['gender'])
-            history['genders'] = history['genders'][-10:]
-        
-        if age_gender.get('confidence') is not None:
-            history['confidences'].append(age_gender['confidence'])
-            history['confidences'] = history['confidences'][-10:]
+            history['genders'] = history['genders'][-20:]
+            
+            # Store gender confidence
+            gender_conf = age_gender.get('gender_confidence', 0.5)
+            history['gender_confidences'].append(gender_conf)
+            history['gender_confidences'] = history['gender_confidences'][-20:]
         
         # Calculate smoothed values
         smoothed = age_gender.copy()
         
-        # Smooth age (median for robustness)
-        if history['ages']:
-            smoothed['age'] = int(np.median(history['ages']))
+        # Improved age smoothing with outlier rejection
+        if len(history['ages']) >= 5:  # Need at least 5 samples for robust smoothing
+            ages = np.array(history['ages'][-15:])
+            confidences = np.array(history['age_confidences'][-15:])
+            timestamps = np.array(history['timestamps'][-15:])
+            
+            # Remove outliers using IQR method
+            q1 = np.percentile(ages, 25)
+            q3 = np.percentile(ages, 75)
+            iqr = q3 - q1
+            lower_bound = q1 - 1.5 * iqr
+            upper_bound = q3 + 1.5 * iqr
+            
+            # Filter out outliers
+            mask = (ages >= lower_bound) & (ages <= upper_bound)
+            filtered_ages = ages[mask]
+            filtered_confidences = confidences[mask] if mask.any() else confidences
+            filtered_timestamps = timestamps[mask] if mask.any() else timestamps
+            
+            if len(filtered_ages) > 0:
+                # Time-based exponential decay (more recent values have higher weight)
+                if len(filtered_timestamps) > 1:
+                    time_diffs = current_time - filtered_timestamps
+                    time_weights = np.exp(-time_diffs / 2.0)  # 2 second decay constant
+                else:
+                    time_weights = np.ones_like(filtered_ages)
+                
+                # Combine confidence and time weights
+                combined_weights = filtered_confidences * time_weights
+                
+                # Add stability bonus for consistent values
+                if len(filtered_ages) > 3:
+                    age_std = np.std(filtered_ages[-5:])
+                    stability_factor = np.exp(-age_std / 10.0)  # Lower std = higher stability
+                    combined_weights *= stability_factor
+                
+                # Normalize weights
+                if combined_weights.sum() > 0:
+                    combined_weights /= combined_weights.sum()
+                    
+                    # Calculate weighted average
+                    smoothed_age = np.average(filtered_ages, weights=combined_weights)
+                    
+                    # Apply additional smoothing for very recent changes
+                    if 'age' in smoothed and smoothed['age'] is not None:
+                        # Limit change rate to prevent jumps
+                        prev_age = smoothed['age']
+                        max_change = 5  # Maximum age change per update
+                        if abs(smoothed_age - prev_age) > max_change:
+                            smoothed_age = prev_age + np.sign(smoothed_age - prev_age) * max_change
+                    
+                    smoothed['age'] = int(smoothed_age)
+                else:
+                    # Fallback to simple average
+                    smoothed['age'] = int(np.mean(filtered_ages))
+            else:
+                # If all values were outliers, use median of original
+                smoothed['age'] = int(np.median(ages))
             
             # Determine age range from smoothed age
             age = smoothed['age']
-            if age < 18:
-                smoothed['age_range'] = "0-17"
+            if age < 13:
+                smoothed['age_range'] = "0-12"
+            elif age < 20:
+                smoothed['age_range'] = "13-19"
             elif age < 30:
-                smoothed['age_range'] = "18-29"
-            elif age < 45:
-                smoothed['age_range'] = "30-44"
+                smoothed['age_range'] = "20-29"
+            elif age < 40:
+                smoothed['age_range'] = "30-39"
+            elif age < 50:
+                smoothed['age_range'] = "40-49"
             elif age < 60:
-                smoothed['age_range'] = "45-59"
+                smoothed['age_range'] = "50-59"
             else:
                 smoothed['age_range'] = "60+"
         
@@ -347,10 +423,17 @@ class StableDetectionPipeline:
             gender_counts = Counter(history['genders'])
             smoothed['gender'] = gender_counts.most_common(1)[0][0]
         
-        # Smooth confidence (mean)
-        if history['confidences']:
-            smoothed['confidence'] = np.mean(history['confidences'])
-            smoothed['smoothed'] = True
+        # Mark as smoothed
+        smoothed['smoothed'] = True
+        
+        # Clean up old histories (remove tracks older than 30 seconds)
+        if len(self.age_gender_history) > 50:
+            to_remove = []
+            for tid, hist in self.age_gender_history.items():
+                if hist['timestamps'] and (current_time - hist['timestamps'][-1] > 30):
+                    to_remove.append(tid)
+            for tid in to_remove:
+                del self.age_gender_history[tid]
         
         return smoothed
     

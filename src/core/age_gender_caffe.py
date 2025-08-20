@@ -236,22 +236,47 @@ class CaffeAgeGenderEstimator:
             age_range = self.AGE_LIST[age_idx]
             age_confidence = float(age_preds[0][age_idx])
             
-            # Estimate specific age from range
+            # Improved age estimation with better range mapping
+            # Use center values for each range
             age_mapping = {
                 '(0-2)': 1,
                 '(4-6)': 5,
                 '(8-12)': 10,
-                '(15-20)': 18,
-                '(25-32)': 28,
-                '(38-43)': 40,
-                '(48-53)': 50,
-                '(60-100)': 70
+                '(15-20)': 17.5,
+                '(25-32)': 28.5,
+                '(38-43)': 40.5,
+                '(48-53)': 50.5,
+                '(60-100)': 65  # Reduced from 70 for more realistic average
             }
-            estimated_age = age_mapping.get(age_range, 30)
             
-            # Add some variance based on confidence
-            if age_confidence < 0.8:
-                estimated_age += np.random.randint(-2, 3)
+            # Get probabilities for all age ranges
+            age_probs = age_preds[0]
+            
+            # Method 1: Weighted average of all predictions (not just top 2)
+            # This provides smoother transitions
+            if len(age_probs) == len(self.AGE_LIST):
+                # Calculate weighted average using all predictions
+                weighted_age = 0
+                total_weight = 0
+                
+                # Use softmax to emphasize higher probabilities
+                exp_probs = np.exp(age_probs * 2)  # Temperature scaling
+                softmax_probs = exp_probs / exp_probs.sum()
+                
+                for idx, prob in enumerate(softmax_probs):
+                    age_val = age_mapping.get(self.AGE_LIST[idx], 30)
+                    weighted_age += age_val * prob
+                    total_weight += prob
+                
+                estimated_age = int(weighted_age / total_weight) if total_weight > 0 else 30
+                
+                # Apply confidence-based smoothing
+                # If confidence is low, blend with a default age
+                if age_confidence < 0.3:
+                    estimated_age = int(estimated_age * 0.7 + 30 * 0.3)
+            else:
+                # Fallback to simple argmax
+                estimated_age = age_mapping.get(age_range, 30)
             
             return {
                 'age': int(estimated_age),
