@@ -42,8 +42,8 @@ class StableDetectionPipeline:
         self.config = config or {}
         
         # Feature flags
-        self.enable_face_detection = self.config.get('enable_face_detection', True)
-        self.enable_age_gender = self.config.get('enable_age_gender', True)
+        self.enable_face_detection = self.config.get('enable_face_detection', False)
+        self.enable_age_gender = self.config.get('enable_age_gender', False)
         self.enable_face_in_person_only = self.config.get('face_in_person_only', True)
         
         # Stability parameters
@@ -85,71 +85,71 @@ class StableDetectionPipeline:
                 progress_callback=self.progress_callback
             )
             
-            # Face detector - use advanced if available
-            if self.enable_face_detection:
-                if self.use_advanced_models:
-                    logger.info("Initializing advanced face detector (YuNet)...")
-                    if self.progress_callback:
-                        self.progress_callback("顔検出モデル (YuNet) を初期化中...")
-                    
-                    self.face_detector = AdvancedFaceDetector(
-                        confidence_threshold=self.face_detection_confidence,
-                        nms_threshold=0.3,
-                        input_size=(320, 320)
-                    )
-                else:
-                    logger.info("Initializing stable face detector...")
-                    if self.progress_callback:
-                        self.progress_callback("顔検出モデルを初期化中...")
-                    
-                    self.face_detector = StableFaceDetector(
-                        detection_confidence=self.face_detection_confidence,
-                        tracking_iou_threshold=self.face_tracking_iou,
-                        min_detection_frames=self.min_face_frames,
-                        temporal_window=self.temporal_window
-                    )
+            # Face detector - always initialize for later use
+            # (will be used only when enable_face_detection is True)
+            if self.use_advanced_models:
+                logger.info("Initializing advanced face detector (YuNet)...")
+                if self.progress_callback:
+                    self.progress_callback("顔検出モデル (YuNet) を初期化中...")
+                
+                self.face_detector = AdvancedFaceDetector(
+                    confidence_threshold=self.face_detection_confidence,
+                    nms_threshold=0.3,
+                    input_size=(320, 320)
+                )
+            else:
+                logger.info("Initializing stable face detector...")
+                if self.progress_callback:
+                    self.progress_callback("顔検出モデルを初期化中...")
+                
+                self.face_detector = StableFaceDetector(
+                    detection_confidence=self.face_detection_confidence,
+                    tracking_iou_threshold=self.face_tracking_iou,
+                    min_detection_frames=self.min_face_frames,
+                    temporal_window=self.temporal_window
+                )
             
-            # Age/Gender estimator - use Caffe models
-            if self.enable_age_gender:
-                if self.use_advanced_models:
-                    # Use Caffe models (most reliable)
-                    try:
-                        logger.info("Initializing Caffe age/gender estimator...")
-                        if self.progress_callback:
-                            self.progress_callback("年齢・性別推定モデル (Caffe) を初期化中...")
+            # Age/Gender estimator - always initialize for later use
+            # (will be used only when enable_age_gender is True)
+            if self.use_advanced_models:
+                # Use Caffe models (most reliable)
+                try:
+                    logger.info("Initializing Caffe age/gender estimator...")
+                    if self.progress_callback:
+                        self.progress_callback("年齢・性別推定モデル (Caffe) を初期化中...")
+                    
+                    self.age_gender_estimator = CaffeAgeGenderEstimator(
+                        use_gpu=self.config.get('use_gpu', False)
+                    )
+                    
+                    # Check if initialization was successful
+                    if hasattr(self.age_gender_estimator, 'method') and self.age_gender_estimator.method == 'caffe_unavailable':
+                        logger.warning("\n" + get_model_download_instructions())
+                        # Still use the estimator but it will return "Model Not Available"
                         
-                        self.age_gender_estimator = CaffeAgeGenderEstimator(
+                except Exception as e:
+                    logger.error(f"Failed to initialize Caffe models: {e}")
+                    logger.error("\n" + get_model_download_instructions())
+                    # Fallback to ONNX models as last resort
+                    logger.info("Attempting fallback to ONNX age/gender estimator...")
+                    try:
+                        self.age_gender_estimator = AdvancedAgeGenderEstimator(
                             use_gpu=self.config.get('use_gpu', False)
                         )
-                        
-                        # Check if initialization was successful
-                        if hasattr(self.age_gender_estimator, 'method') and self.age_gender_estimator.method == 'caffe_unavailable':
-                            logger.warning("\n" + get_model_download_instructions())
-                            # Still use the estimator but it will return "Model Not Available"
-                            
-                    except Exception as e:
-                        logger.error(f"Failed to initialize Caffe models: {e}")
-                        logger.error("\n" + get_model_download_instructions())
-                        # Fallback to ONNX models as last resort
-                        logger.info("Attempting fallback to ONNX age/gender estimator...")
-                        try:
-                            self.age_gender_estimator = AdvancedAgeGenderEstimator(
-                                use_gpu=self.config.get('use_gpu', False)
-                            )
-                        except:
-                            # Create a dummy estimator that returns unavailable
-                            self.age_gender_estimator = None
-                            logger.error("No age/gender estimation models available")
-                else:
-                    logger.info("Initializing standard age/gender estimator...")
-                    try:
-                        self.age_gender_estimator = AgeGenderEstimator(
-                            model_path=self.config.get('age_gender_model'),
-                            use_gpu=self.config.get('use_gpu', False)
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to initialize AgeGenderEstimator: {e}")
-                        self.age_gender_estimator = SimpleAgeGenderEstimator()
+                    except:
+                        # Create a dummy estimator that returns unavailable
+                        self.age_gender_estimator = None
+                        logger.error("No age/gender estimation models available")
+            else:
+                logger.info("Initializing standard age/gender estimator...")
+                try:
+                    self.age_gender_estimator = AgeGenderEstimator(
+                        model_path=self.config.get('age_gender_model'),
+                        use_gpu=self.config.get('use_gpu', False)
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to initialize AgeGenderEstimator: {e}")
+                    self.age_gender_estimator = SimpleAgeGenderEstimator()
             
             logger.info("Stable pipeline initialization complete")
             

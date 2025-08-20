@@ -210,25 +210,9 @@ class IntegratedYoloWorker(QThread):
                 raise RuntimeError("カメラの初期化に失敗しました")
             
             # 検出器の初期化
-            if self.enable_face_detection or self.enable_age_gender:
-                # 統合パイプライン使用
-                self.initialization_progress.emit("AIモデルをロード中...")
-                self._initialize_pipeline()
-            else:
-                # 基本的な人物検出のみ
-                self.initialization_progress.emit("人物検出モデルを初期化中...")
-                
-                # 進捗通知用のコールバック
-                def progress_handler(message):
-                    self.initialization_progress.emit(message)
-                
-                self.detector = PersonDetector(
-                    model_name=self.model_name,
-                    confidence_threshold=self.confidence_threshold,
-                    device=self.device,
-                    progress_callback=progress_handler
-                )
-                self.pipeline = None
+            # 常にパイプラインを初期化（機能のON/OFFはパイプライン内で制御）
+            self.initialization_progress.emit("AIモデルをロード中...")
+            self._initialize_pipeline()
             
             self.initialization_progress.emit("初期化完了")
             logger.info("検出コンポーネントを初期化しました")
