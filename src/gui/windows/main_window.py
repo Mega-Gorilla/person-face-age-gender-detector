@@ -243,6 +243,12 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
         """Setup detection worker for stream mode"""
         self.detection_worker = IntegratedYoloWorker(self)
         
+        # UIの初期状態をワーカーに反映
+        if hasattr(self.control_panel, 'face_detection_checkbox'):
+            self.detection_worker.enable_face_detection = self.control_panel.face_detection_checkbox.isChecked()
+            self.detection_worker.enable_age_gender = self.control_panel.age_gender_checkbox.isChecked()
+            logger.info(f"初期設定: 顔検出={self.detection_worker.enable_face_detection}, 年齢性別={self.detection_worker.enable_age_gender}")
+        
         # Connect signals
         self.detection_worker.frame_ready.connect(self.video_widget.update_frame)
         self.detection_worker.stats_updated.connect(self.control_panel.update_statistics)

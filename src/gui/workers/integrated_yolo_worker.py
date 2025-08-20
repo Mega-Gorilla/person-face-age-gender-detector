@@ -144,9 +144,9 @@ class IntegratedYoloWorker(QThread):
         self.show_center = False
         self.device = None
         
-        # 顔検出・年齢性別推定設定
-        self.enable_face_detection = False
-        self.enable_age_gender = False
+        # 顔検出・年齢性別推定設定（UIのデフォルトと合わせる）
+        self.enable_face_detection = True  # デフォルトで有効
+        self.enable_age_gender = True  # デフォルトで有効
         self.face_confidence = 0.8
         self.use_stable_pipeline = True  # 安定版パイプライン使用
         
