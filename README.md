@@ -37,9 +37,6 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Install gdown for automatic model downloads (optional but recommended)
-pip install gdown
-
 # Download age/gender models (automatic on first run, or manual)
 python download_models.py
 ```

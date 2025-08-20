@@ -5,11 +5,12 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox,
     QPushButton, QSlider, QLabel, QComboBox,
-    QCheckBox, QSpinBox, QGridLayout
+    QCheckBox, QSpinBox, QGridLayout, QMessageBox
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QFont
 import logging
+from src.utils.camera_detector import get_available_cameras
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,11 @@ class ControlPanel(QWidget):
         super().__init__(parent)
         
         self.is_playing = True
+        self.available_cameras = []  # 利用可能なカメラリスト
         self.setup_ui()
+        
+        # カメラリストを初期化（非同期で実行）
+        QTimer.singleShot(100, self.refresh_camera_list)
     
     def setup_ui(self):
         """UIのセットアップ"""
@@ -270,13 +275,20 @@ class ControlPanel(QWidget):
         group = QGroupBox("カメラ設定")
         layout = QGridLayout()
         
-        # カメラインデックス
+        # カメラ選択（プルダウン）
         layout.addWidget(QLabel("カメラ:"), 0, 0)
-        self.camera_spin = QSpinBox()
-        self.camera_spin.setMinimum(0)
-        self.camera_spin.setMaximum(10)
-        self.camera_spin.setValue(0)
-        layout.addWidget(self.camera_spin, 0, 1)
+        self.camera_combo = QComboBox()
+        self.camera_combo.setToolTip("利用可能なカメラデバイスを選択")
+        # 初期アイテムを追加
+        self.camera_combo.addItem("カメラを検索中...")
+        layout.addWidget(self.camera_combo, 0, 1)
+        
+        # カメラリフレッシュボタン
+        self.refresh_camera_btn = QPushButton("🔄")
+        self.refresh_camera_btn.setMaximumWidth(30)
+        self.refresh_camera_btn.setToolTip("カメラリストを更新")
+        self.refresh_camera_btn.clicked.connect(self.refresh_camera_list)
+        layout.addWidget(self.refresh_camera_btn, 0, 2)
         
         # 解像度
         layout.addWidget(QLabel("解像度:"), 1, 0)
@@ -302,7 +314,7 @@ class ControlPanel(QWidget):
         # 適用ボタン
         self.apply_camera_btn = QPushButton("適用")
         self.apply_camera_btn.clicked.connect(self.on_camera_settings_apply)
-        layout.addWidget(self.apply_camera_btn, 3, 0, 1, 2)
+        layout.addWidget(self.apply_camera_btn, 3, 0, 1, 3)  # カラム数を3に変更
         
         group.setLayout(layout)
         return group
@@ -375,14 +387,24 @@ class ControlPanel(QWidget):
     
     def on_camera_settings_apply(self):
         """カメラ設定の適用"""
+        # 選択されたカメラのインデックスを取得
+        camera_index = 0
+        current_index = self.camera_combo.currentIndex()
+        if current_index >= 0 and current_index < len(self.available_cameras):
+            camera_index = self.available_cameras[current_index]['index']
+        
         resolution = self.resolution_combo.currentText().split('x')
         settings = {
-            'camera_index': self.camera_spin.value(),
+            'camera_index': camera_index,
             'width': int(resolution[0]),
             'height': int(resolution[1]),
             'fps': self.fps_spin.value()
         }
         self.camera_settings_changed.emit(settings)
+        
+        # ユーザーフィードバック
+        camera_name = self.camera_combo.currentText()
+        logger.info(f"カメラ設定を適用: {camera_name} ({resolution[0]}x{resolution[1]} @ {self.fps_spin.value()}fps)")
     
     def update_statistics(self, stats: dict):
         """統計情報の更新"""
@@ -444,3 +466,80 @@ class ControlPanel(QWidget):
             self.gender_label.setText(f"M:{male} F:{female}")
         else:
             self.gender_label.setText("M:0 F:0")
+    
+    def refresh_camera_list(self):
+        """利用可能なカメラリストを更新"""
+        try:
+            # 現在の選択を保存
+            current_camera_index = 0
+            if self.camera_combo.count() > 0 and self.camera_combo.currentIndex() >= 0:
+                current_index = self.camera_combo.currentIndex()
+                if current_index < len(self.available_cameras):
+                    current_camera_index = self.available_cameras[current_index]['index']
+            
+            # カメラ検出中の表示
+            self.camera_combo.clear()
+            self.camera_combo.addItem("カメラを検索中...")
+            self.camera_combo.setEnabled(False)
+            self.refresh_camera_btn.setEnabled(False)
+            
+            # UIを更新
+            from PySide6.QtWidgets import QApplication
+            QApplication.processEvents()
+            
+            # カメラを検出
+            self.available_cameras = get_available_cameras(max_test_index=5)
+            
+            # コンボボックスを更新
+            self.camera_combo.clear()
+            
+            if self.available_cameras:
+                # 利用可能なカメラを追加
+                for camera in self.available_cameras:
+                    if camera['available']:
+                        # 解像度とFPS情報を含む詳細な表示
+                        display_text = f"{camera['name']} ({camera['resolution']} @ {camera['fps']}fps)"
+                    else:
+                        display_text = f"{camera['name']} (利用不可)"
+                    self.camera_combo.addItem(display_text)
+                
+                # 以前の選択を復元するか、最初のカメラを選択
+                restored = False
+                for i, camera in enumerate(self.available_cameras):
+                    if camera['index'] == current_camera_index:
+                        self.camera_combo.setCurrentIndex(i)
+                        restored = True
+                        break
+                
+                if not restored:
+                    self.camera_combo.setCurrentIndex(0)
+                
+                logger.info(f"{len(self.available_cameras)}台のカメラを検出しました")
+            else:
+                # カメラが見つからない場合
+                self.camera_combo.addItem("カメラが見つかりません")
+                logger.warning("利用可能なカメラが見つかりませんでした")
+            
+            self.camera_combo.setEnabled(True)
+            self.refresh_camera_btn.setEnabled(True)
+            
+        except Exception as e:
+            logger.error(f"カメラリストの更新中にエラー: {e}")
+            self.camera_combo.clear()
+            self.camera_combo.addItem("エラー: カメラ検出失敗")
+            self.camera_combo.setEnabled(True)
+            self.refresh_camera_btn.setEnabled(True)
+            
+            # エラーメッセージを表示
+            QMessageBox.warning(
+                self,
+                "カメラ検出エラー",
+                f"カメラの検出中にエラーが発生しました:\n{str(e)}"
+            )
+    
+    def get_selected_camera_index(self) -> int:
+        """選択されているカメラのインデックスを取得"""
+        current_index = self.camera_combo.currentIndex()
+        if current_index >= 0 and current_index < len(self.available_cameras):
+            return self.available_cameras[current_index]['index']
+        return 0

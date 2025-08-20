@@ -9,3 +9,9 @@ insightface>=0.7.3
 onnxruntime>=1.16.0
 timm>=0.9.0
 albumentations>=1.3.0
+
+# Model downloading
+gdown>=4.6.0
+
+# Performance monitoring
+psutil>=5.9.0
