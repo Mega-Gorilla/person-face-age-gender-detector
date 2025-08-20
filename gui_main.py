@@ -87,7 +87,7 @@ def main():
             from src.gui.dialogs.startup_splash import StartupSplash
             splash = StartupSplash()
             splash.show_and_process()
-            splash.update_message("システムを初期化中...")
+            splash.update_message("システムを起動中...")
         except Exception as e:
             logger.debug(f"スプラッシュスクリーン表示エラー: {e}")
         

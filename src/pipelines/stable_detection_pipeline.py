@@ -55,6 +55,9 @@ class StableDetectionPipeline:
         # Use advanced models preference
         self.use_advanced_models = self.config.get('use_advanced_models', True) and ADVANCED_MODELS_AVAILABLE
         
+        # Progress callback
+        self.progress_callback = self.config.get('progress_callback', None)
+        
         # Initialize components
         self.person_detector = None
         self.face_detector = None
@@ -73,15 +76,22 @@ class StableDetectionPipeline:
         try:
             # Person detector
             logger.info("Initializing person detector...")
+            if self.progress_callback:
+                self.progress_callback("人物検出モデルを初期化中...")
+            
             self.person_detector = PersonDetector(
                 model_name=self.config.get('person_model', 'yolo11n.pt'),
-                confidence_threshold=self.config.get('person_confidence', 0.5)
+                confidence_threshold=self.config.get('person_confidence', 0.5),
+                progress_callback=self.progress_callback
             )
             
             # Face detector - use advanced if available
             if self.enable_face_detection:
                 if self.use_advanced_models:
                     logger.info("Initializing advanced face detector (YuNet)...")
+                    if self.progress_callback:
+                        self.progress_callback("顔検出モデル (YuNet) を初期化中...")
+                    
                     self.face_detector = AdvancedFaceDetector(
                         confidence_threshold=self.face_detection_confidence,
                         nms_threshold=0.3,
@@ -89,6 +99,9 @@ class StableDetectionPipeline:
                     )
                 else:
                     logger.info("Initializing stable face detector...")
+                    if self.progress_callback:
+                        self.progress_callback("顔検出モデルを初期化中...")
+                    
                     self.face_detector = StableFaceDetector(
                         detection_confidence=self.face_detection_confidence,
                         tracking_iou_threshold=self.face_tracking_iou,
@@ -102,6 +115,9 @@ class StableDetectionPipeline:
                     # Use Caffe models (most reliable)
                     try:
                         logger.info("Initializing Caffe age/gender estimator...")
+                        if self.progress_callback:
+                            self.progress_callback("年齢・性別推定モデル (Caffe) を初期化中...")
+                        
                         self.age_gender_estimator = CaffeAgeGenderEstimator(
                             use_gpu=self.config.get('use_gpu', False)
                         )

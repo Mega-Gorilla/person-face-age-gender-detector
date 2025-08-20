@@ -14,7 +14,8 @@ class PersonDetector:
         self, 
         model_name: str = "yolo11n.pt",
         confidence_threshold: float = 0.5,
-        device: Optional[str] = None
+        device: Optional[str] = None,
+        progress_callback: Optional[callable] = None
     ):
         """
         PersonDetectorの初期化
@@ -23,20 +24,34 @@ class PersonDetector:
             model_name: 使用するYOLOモデル名
             confidence_threshold: 検出の信頼度閾値
             device: 実行デバイス ('cpu', 'cuda', None=auto)
+            progress_callback: 進捗通知用のコールバック関数
         """
         self.confidence_threshold = confidence_threshold
         self.device = device
+        self.progress_callback = progress_callback
         
         try:
             logger.info(f"モデル {model_name} を読み込み中...")
+            if self.progress_callback:
+                self.progress_callback(f"YOLOモデル {model_name} を読み込み中...")
+            
             self.model = YOLO(model_name)
+            
             if self.device:
                 self.model.to(self.device)
+            
             logger.info(f"モデルの読み込みが完了しました")
+            if self.progress_callback:
+                self.progress_callback(f"YOLOモデル {model_name} の準備完了")
+                
         except Exception as e:
             logger.error(f"モデル読み込みエラー: {e}")
             logger.info("モデルをダウンロード中...")
+            if self.progress_callback:
+                self.progress_callback(f"YOLOモデル {model_name} をダウンロード中...")
+            
             self.model = YOLO(model_name)
+            
             if self.device:
                 self.model.to(self.device)
     

@@ -251,7 +251,7 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
         
         # Start worker
         self.detection_worker.start()
-        self.status_bar.showMessage("システムを起動中...")
+        self.status_bar.showMessage("検出システムを起動中...")
     
     def setup_file_worker(self):
         """Setup file processing worker"""
@@ -387,9 +387,13 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
         self.status_bar.showMessage(message)
         logger.info(f"初期化進捗: {message}")
         
+        # UIを更新して進捗を即座に反映
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
+        
         # 初期化完了時の処理
         if message == "初期化完了":
-            self.status_bar.showMessage("検出を開始しました")
+            self.status_bar.showMessage("✓ 検出システムの準備が完了しました")
     
     def handle_error(self, error_message: str):
         """エラーの処理"""

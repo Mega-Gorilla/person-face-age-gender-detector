@@ -216,11 +216,17 @@ class IntegratedYoloWorker(QThread):
                 self._initialize_pipeline()
             else:
                 # 基本的な人物検出のみ
-                self.initialization_progress.emit("YOLOモデルをロード中...")
+                self.initialization_progress.emit("人物検出モデルを初期化中...")
+                
+                # 進捗通知用のコールバック
+                def progress_handler(message):
+                    self.initialization_progress.emit(message)
+                
                 self.detector = PersonDetector(
                     model_name=self.model_name,
                     confidence_threshold=self.confidence_threshold,
-                    device=self.device
+                    device=self.device,
+                    progress_callback=progress_handler
                 )
                 self.pipeline = None
             
@@ -245,6 +251,10 @@ class IntegratedYoloWorker(QThread):
                 use_gpu = False
                 logger.info("GPU manager not available, using CPU")
             
+            # 進捗通知用のコールバック
+            def progress_handler(message):
+                self.initialization_progress.emit(message)
+            
             config = {
                 'person_model': self.model_name,
                 'person_confidence': self.confidence_threshold,
@@ -253,11 +263,12 @@ class IntegratedYoloWorker(QThread):
                 'face_confidence': self.face_confidence,
                 'face_in_person_only': True,
                 'use_gpu': use_gpu,
-                'use_advanced_models': True  # Caffeモデルを使用するため追加
+                'use_advanced_models': True,  # Caffeモデルを使用するため追加
+                'progress_callback': progress_handler  # 進捗通知コールバック
             }
             
             if self.use_stable_pipeline:
-                self.initialization_progress.emit("顔検出・年齢性別推定モデルをロード中...")
+                self.initialization_progress.emit("検出パイプラインを初期化中...")
                 from src.pipelines.stable_detection_pipeline import StableDetectionPipeline
                 self.pipeline = StableDetectionPipeline(config)
                 logger.info("Stable detection pipeline initialized")

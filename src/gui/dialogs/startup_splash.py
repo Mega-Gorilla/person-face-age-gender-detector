@@ -45,9 +45,23 @@ class StartupSplash(QSplashScreen):
         
     def update_message(self, message: str):
         """メッセージを更新"""
+        # より詳細なメッセージに応じて色を変更
+        color = QColor(0, 255, 0)  # デフォルトは緑
+        
+        if "YOLO" in message or "人物検出" in message:
+            color = QColor(255, 200, 0)  # オレンジ
+        elif "顔検出" in message:
+            color = QColor(0, 200, 255)  # 水色
+        elif "年齢・性別" in message:
+            color = QColor(255, 100, 255)  # ピンク
+        elif "カメラ" in message:
+            color = QColor(100, 255, 100)  # 明るい緑
+        elif "完了" in message:
+            color = QColor(0, 255, 0)  # 緑
+            
         self.showMessage(message, 
                          Qt.AlignBottom | Qt.AlignHCenter, 
-                         QColor(0, 255, 0))  # 緑色のテキスト
+                         color)
         QApplication.processEvents()
         
     def show_and_process(self):
