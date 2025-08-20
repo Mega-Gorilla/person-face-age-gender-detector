@@ -113,6 +113,7 @@ class IntegratedYoloWorker(QThread):
     stats_updated = Signal(dict)
     error_occurred = Signal(str)
     detection_results = Signal(dict)  # 詳細な検出結果
+    initialization_progress = Signal(str)  # 初期化進捗の通知
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -180,6 +181,7 @@ class IntegratedYoloWorker(QThread):
         """コンポーネントの初期化"""
         try:
             # カメラの初期化
+            self.initialization_progress.emit("カメラを初期化中...")
             self.camera = CameraCapture(
                 camera_index=self.camera_index,
                 resolution=self.resolution,
@@ -192,9 +194,11 @@ class IntegratedYoloWorker(QThread):
             # 検出器の初期化
             if self.enable_face_detection or self.enable_age_gender:
                 # 統合パイプライン使用
+                self.initialization_progress.emit("AIモデルをロード中...")
                 self._initialize_pipeline()
             else:
                 # 基本的な人物検出のみ
+                self.initialization_progress.emit("YOLOモデルをロード中...")
                 self.detector = PersonDetector(
                     model_name=self.model_name,
                     confidence_threshold=self.confidence_threshold,
@@ -202,6 +206,7 @@ class IntegratedYoloWorker(QThread):
                 )
                 self.pipeline = None
             
+            self.initialization_progress.emit("初期化完了")
             logger.info("検出コンポーネントを初期化しました")
             return True
             
@@ -234,6 +239,7 @@ class IntegratedYoloWorker(QThread):
             }
             
             if self.use_stable_pipeline:
+                self.initialization_progress.emit("顔検出・年齢性別推定モデルをロード中...")
                 from src.pipelines.stable_detection_pipeline import StableDetectionPipeline
                 self.pipeline = StableDetectionPipeline(config)
                 logger.info("Stable detection pipeline initialized")

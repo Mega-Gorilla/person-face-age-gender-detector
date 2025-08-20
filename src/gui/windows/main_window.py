@@ -247,10 +247,11 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
         self.detection_worker.frame_ready.connect(self.video_widget.update_frame)
         self.detection_worker.stats_updated.connect(self.control_panel.update_statistics)
         self.detection_worker.error_occurred.connect(self.handle_error)
+        self.detection_worker.initialization_progress.connect(self.on_initialization_progress)
         
         # Start worker
         self.detection_worker.start()
-        self.status_bar.showMessage("Detection started")
+        self.status_bar.showMessage("システムを起動中...")
     
     def setup_file_worker(self):
         """Setup file processing worker"""
@@ -380,6 +381,15 @@ class MainWindow(WaylandWindowMixin, QMainWindow):
     def toggle_fullscreen(self):
         """Legacy fullscreen toggle - redirects to safe version"""
         self.toggle_fullscreen_safe()
+    
+    def on_initialization_progress(self, message: str):
+        """初期化進捗の表示"""
+        self.status_bar.showMessage(message)
+        logger.info(f"初期化進捗: {message}")
+        
+        # 初期化完了時の処理
+        if message == "初期化完了":
+            self.status_bar.showMessage("検出を開始しました")
     
     def handle_error(self, error_message: str):
         """エラーの処理"""

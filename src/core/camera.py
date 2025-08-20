@@ -41,7 +41,8 @@ class CameraCapture:
             if not self.cap.isOpened():
                 logger.warning(f"カメラインデックス {self.camera_index} を開けませんでした")
                 
-                for i in range(5):
+                # 起動時は最大2つのインデックスのみ試す（高速化）
+                for i in range(min(2, 5)):
                     if i == self.camera_index:
                         continue
                     logger.info(f"カメラインデックス {i} を試しています...")

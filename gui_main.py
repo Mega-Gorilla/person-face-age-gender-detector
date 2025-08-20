@@ -81,9 +81,23 @@ def main():
             else:
                 logger.warning("年齢・性別推定モデルが利用できません - 機能は無効化されます")
         
+        # スプラッシュスクリーンの表示（オプション）
+        splash = None
+        try:
+            from src.gui.dialogs.startup_splash import StartupSplash
+            splash = StartupSplash()
+            splash.show_and_process()
+            splash.update_message("システムを初期化中...")
+        except Exception as e:
+            logger.debug(f"スプラッシュスクリーン表示エラー: {e}")
+        
         # メインウィンドウの作成
         window = MainWindow()
         window.show()
+        
+        # スプラッシュを閉じる
+        if splash:
+            splash.finish(window)
         
         logger.info("GUI版 YOLOv11 人物検出システムを起動しました")
         

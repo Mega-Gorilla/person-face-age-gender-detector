@@ -38,8 +38,8 @@ class ControlPanel(QWidget):
         self.available_cameras = []  # 利用可能なカメラリスト
         self.setup_ui()
         
-        # カメラリストを初期化（非同期で実行）
-        QTimer.singleShot(100, self.refresh_camera_list)
+        # カメラリストを初期化（非同期で実行、起動を高速化）
+        QTimer.singleShot(100, self.quick_camera_init)
     
     def setup_ui(self):
         """UIのセットアップ"""
@@ -467,6 +467,28 @@ class ControlPanel(QWidget):
         else:
             self.gender_label.setText("M:0 F:0")
     
+    def quick_camera_init(self):
+        """起動時の高速カメラ初期化（デフォルトカメラのみチェック）"""
+        try:
+            # デフォルトカメラのみを追加
+            self.camera_combo.clear()
+            self.camera_combo.addItem("デフォルトカメラ (起動中...)")
+            self.available_cameras = [{
+                'index': 0,
+                'name': 'デフォルトカメラ',
+                'available': True,
+                'resolution': 'N/A',
+                'fps': 30
+            }]
+            
+            logger.info("起動時の高速カメラ初期化完了")
+            
+            # 後で完全なカメラリストを取得
+            QTimer.singleShot(3000, self.refresh_camera_list)
+            
+        except Exception as e:
+            logger.error(f"カメラ初期化エラー: {e}")
+    
     def refresh_camera_list(self):
         """利用可能なカメラリストを更新"""
         try:
@@ -487,8 +509,8 @@ class ControlPanel(QWidget):
             from PySide6.QtWidgets import QApplication
             QApplication.processEvents()
             
-            # カメラを検出
-            self.available_cameras = get_available_cameras(max_test_index=5)
+            # カメラを検出（起動後は最大3台のみチェック）
+            self.available_cameras = get_available_cameras(max_test_index=3)
             
             # コンボボックスを更新
             self.camera_combo.clear()
