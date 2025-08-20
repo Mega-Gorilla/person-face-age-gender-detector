@@ -213,6 +213,15 @@ class IntegratedYoloWorker(QThread):
     def _initialize_pipeline(self):
         """パイプラインの初期化"""
         try:
+            # GPU利用可能性をチェック
+            try:
+                from src.utils.gpu_manager import gpu_manager
+                use_gpu = gpu_manager.cuda_available
+                logger.info(f"GPU available: {use_gpu}")
+            except:
+                use_gpu = False
+                logger.info("GPU manager not available, using CPU")
+            
             config = {
                 'person_model': self.model_name,
                 'person_confidence': self.confidence_threshold,
@@ -220,7 +229,8 @@ class IntegratedYoloWorker(QThread):
                 'enable_age_gender': self.enable_age_gender,
                 'face_confidence': self.face_confidence,
                 'face_in_person_only': True,
-                'use_gpu': False
+                'use_gpu': use_gpu,
+                'use_advanced_models': True  # Caffeモデルを使用するため追加
             }
             
             if self.use_stable_pipeline:

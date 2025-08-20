@@ -33,7 +33,7 @@ def main():
     # Check if gdown is installed
     print("1. Checking dependencies...")
     if not check_gdown_installed():
-        print("   ✗ gdown is not installed")
+        print("   [ERROR] gdown is not installed")
         print("\n" + "="*60)
         print("INSTALLATION REQUIRED")
         print("="*60)
@@ -44,7 +44,7 @@ def main():
         print("="*60 + "\n")
         return 1
     
-    print("   ✓ gdown is installed")
+    print("   [OK] gdown is installed")
     
     # Check if models already exist
     model_dir = Path("models/age_gender_caffe")
@@ -53,8 +53,8 @@ def main():
     
     if age_model.exists() and gender_model.exists():
         print("\n2. Checking existing models...")
-        print(f"   ✓ Age model found: {age_model}")
-        print(f"   ✓ Gender model found: {gender_model}")
+        print(f"   [OK] Age model found: {age_model}")
+        print(f"   [OK] Gender model found: {gender_model}")
         
         response = input("\nModels already exist. Re-download? (y/N): ")
         if response.lower() != 'y':
@@ -73,8 +73,8 @@ def main():
             print("\n" + "="*60)
             print("SUCCESS!")
             print("="*60)
-            print("\n✓ Models downloaded and loaded successfully!")
-            print(f"✓ Models saved to: {model_dir}")
+            print("\n[SUCCESS] Models downloaded and loaded successfully!")
+            print(f"[SUCCESS] Models saved to: {model_dir}")
             print("\nYou can now use age and gender estimation in the application.")
             print("="*60 + "\n")
             return 0
@@ -82,7 +82,7 @@ def main():
             print("\n" + "="*60)
             print("DOWNLOAD INCOMPLETE")
             print("="*60)
-            print("\n⚠ Models could not be downloaded or loaded properly.")
+            print("\n[WARNING] Models could not be downloaded or loaded properly.")
             print("\nPlease try:")
             print("1. Check your internet connection")
             print("2. Try running the script again")
@@ -92,11 +92,11 @@ def main():
             return 1
             
     except KeyboardInterrupt:
-        print("\n\n⚠ Download interrupted by user.")
+        print("\n\n[WARNING] Download interrupted by user.")
         print("Run this script again to resume/retry.")
         return 1
     except Exception as e:
-        print(f"\n✗ Error during download: {e}")
+        print(f"\n[ERROR] Error during download: {e}")
         print("\nTroubleshooting:")
         print("1. Check your internet connection")
         print("2. Make sure you have write permissions to the models directory")
