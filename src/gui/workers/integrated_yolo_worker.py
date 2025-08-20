@@ -82,6 +82,10 @@ class IntegratedVisualizerEx(Visualizer):
                             gender = face.get('gender', 'Unknown')
                             age_range = face.get('age_range', 'Unknown')
                             
+                            # デバッグログ
+                            if age or gender != 'Unknown':
+                                logger.debug(f"Face data - Age: {age}, Gender: {gender}, Range: {age_range}")
+                            
                             if age:
                                 ag_label = f"{gender}, {age}"
                             else:
@@ -154,21 +158,35 @@ class IntegratedYoloWorker(QThread):
         """顔検出のON/OFF切り替え"""
         self.enable_face_detection = enabled
         
-        if self.pipeline:
-            self.pipeline.update_config(enable_face_detection=enabled)
-            logger.info(f"Face detection {'enabled' if enabled else 'disabled'}")
-        
-        # パイプラインの再初期化が必要な場合
-        if enabled and not self.pipeline:
-            self._initialize_pipeline()
+        # パイプラインが存在しない、または基本検出器のみの場合は再初期化
+        if enabled:
+            if not self.pipeline:
+                logger.info("Initializing pipeline for face detection")
+                self._initialize_pipeline()
+            else:
+                self.pipeline.update_config(enable_face_detection=enabled)
+                logger.info(f"Face detection enabled")
+        else:
+            if self.pipeline:
+                self.pipeline.update_config(enable_face_detection=enabled)
+                logger.info(f"Face detection disabled")
     
     def toggle_age_gender(self, enabled: bool):
         """年齢性別推定のON/OFF切り替え"""
         self.enable_age_gender = enabled
         
-        if self.pipeline:
-            self.pipeline.update_config(enable_age_gender=enabled)
-            logger.info(f"Age/gender estimation {'enabled' if enabled else 'disabled'}")
+        # パイプラインが存在しない場合は初期化
+        if enabled:
+            if not self.pipeline:
+                logger.info("Initializing pipeline for age/gender estimation")
+                self._initialize_pipeline()
+            else:
+                self.pipeline.update_config(enable_age_gender=enabled)
+                logger.info(f"Age/gender estimation enabled")
+        else:
+            if self.pipeline:
+                self.pipeline.update_config(enable_age_gender=enabled)
+                logger.info(f"Age/gender estimation disabled")
     
     def set_face_confidence(self, value: float):
         """顔検出信頼度の設定"""
@@ -302,6 +320,12 @@ class IntegratedYoloWorker(QThread):
                 results = self.pipeline.process_frame(frame)
                 detections = results['persons']
                 
+                # デバッグ: 顔検出結果を確認
+                if len(results.get('faces', [])) > 0:
+                    for face in results['faces']:
+                        if face.get('age') or face.get('gender'):
+                            logger.debug(f"Pipeline result - Age: {face.get('age')}, Gender: {face.get('gender')}, Method: {face.get('method')}")
+                
                 # 詳細結果を送信
                 self.detection_results.emit(results)
             else:
@@ -386,6 +410,10 @@ class IntegratedYoloWorker(QThread):
             'age_distribution': results.get('statistics', {}).get('age_distribution', {}),
             'processing_time': perf_stats['avg_processing_time']
         }
+        
+        # デバッグログ
+        if stats['face_count'] > 0:
+            logger.debug(f"Stats - Faces: {stats['face_count']}, Gender: {stats['gender_distribution']}, Age: {stats['age_distribution']}")
         
         self.stats_updated.emit(stats)
     
