@@ -47,11 +47,16 @@ models/
 .DS_Store
 .claude/
 
-# Claude.ai specific files
-CLAUDE.md
-claude.md
+# Claude.ai specific files (keep CLAUDE.md)
+# CLAUDE.md is kept for AI assistant instructions
 */CLAUDE.md
 */claude.md
+
+# Internal documentation not for public sharing
+LICENSE_COMPATIBILITY_REPORT.md
+LICENSE_MIGRATION_GUIDE.md
+docs/
+test_*.py
 
 # Project specific
 screenshot_*.jpg
