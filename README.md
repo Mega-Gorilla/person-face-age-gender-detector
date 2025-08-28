@@ -344,7 +344,34 @@ python -m pytest tests/
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)** - see the [LICENSE](LICENSE) file for details.
+
+### Why AGPL-3.0?
+
+This project uses several powerful libraries that are licensed under AGPL-3.0:
+- **Ultralytics YOLO**: State-of-the-art object detection
+- **albumentations**: Advanced image augmentation
+
+To maintain legal compliance and respect the open-source ecosystem, this project adopts the AGPL-3.0 license.
+
+### What does this mean?
+
+- ✅ You can use this software for any purpose, including commercial use
+- ✅ You can modify and distribute the software
+- 📝 You must provide source code when distributing
+- 🌐 If you run this as a network service, you must provide source code to users
+- 🔗 Any modifications must also be licensed under AGPL-3.0
+
+### Commercial Use
+
+For commercial use without AGPL-3.0 obligations:
+1. Purchase commercial licenses for Ultralytics and other AGPL components
+2. Contact the project maintainers for alternative licensing arrangements
+
+### Third-party Licenses
+
+- **InsightFace models**: Non-commercial research use only (models can be disabled)
+- See [LICENSE_COMPATIBILITY_REPORT.md](LICENSE_COMPATIBILITY_REPORT.md) for full dependency analysis
 
 ## 🙏 Acknowledgments
 
