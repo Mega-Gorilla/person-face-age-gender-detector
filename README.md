@@ -326,21 +326,6 @@ pip install gdown
 | With Face Detection | 35 | 25% | 55% | 1.5 GB |
 | Full Pipeline | 28 | 30% | 65% | 2.0 GB |
 
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-### Development Setup
-```bash
-# Clone with development branch
-git clone -b develop https://github.com/yourusername/person-face-age-gender-detector.git
-
-# Install development dependencies
-pip install -r requirements-dev.txt
-
-# Run tests
-python -m pytest tests/
-```
 
 ## 📄 License
 
@@ -371,7 +356,6 @@ For commercial use without AGPL-3.0 obligations:
 ### Third-party Licenses
 
 - **InsightFace models**: Non-commercial research use only (models can be disabled)
-- See [LICENSE_COMPATIBILITY_REPORT.md](LICENSE_COMPATIBILITY_REPORT.md) for full dependency analysis
 
 ## 🙏 Acknowledgments
 
@@ -380,18 +364,12 @@ For commercial use without AGPL-3.0 obligations:
 - [OpenCV](https://opencv.org/) - Computer vision library
 - [InsightFace](https://github.com/deepinsight/insightface) - Face analysis toolkit
 
-## 📧 Support
-
-- **Issues**: [GitHub Issues](https://github.com/yourusername/person-face-age-gender-detector/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/person-face-age-gender-detector/discussions)
-- **Wiki**: [Project Wiki](https://github.com/yourusername/person-face-age-gender-detector/wiki)
 
 ---
 
-**Version**: 2.3.0 "Optimized Vision"  
-**Release Date**: January 20, 2025  
-**Maintained by**: Your Team Name  
+**Version**: 2.3.0  
+**License**: AGPL-3.0  
 
 <p align="center">
-  Made with ❤️ using YOLOv11 and PySide6
+  Built with YOLOv11 and PySide6
 </p>
